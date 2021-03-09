@@ -622,12 +622,21 @@ double WASMIF::getLvar(const char* lvarName) {
 		if (!strcmp(lvarName, lvarNames.at(lvarId).c_str())) break;
 
 	EnterCriticalSection(&lvarMutex);
-	double result = lvarValues.at(lvarId < lvarValues.size() ? lvarValues.at(lvarId) : 0.0);
+	double result = lvarId < lvarValues.size() ? lvarValues.at(lvarId) : 0.0;
 	LeaveCriticalSection(&lvarMutex);
 
 	return result;
 }
 
+void WASMIF::getLvarValues(map<string, double >& returnMap) {
+	int lvarId;
+
+	for (lvarId = 0; lvarId < lvarNames.size(); lvarId++) {
+		EnterCriticalSection(&lvarMutex);
+		returnMap.insert(make_pair(lvarNames.at(lvarId), lvarValues.at(lvarId)));
+		LeaveCriticalSection(&lvarMutex);
+	}
+}
 
 void WASMIF::setLvar(unsigned short id, unsigned short value) {
 	BOOL isNegative = FALSE;

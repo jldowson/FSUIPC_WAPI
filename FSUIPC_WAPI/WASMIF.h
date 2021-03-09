@@ -67,6 +67,7 @@ class WASMIF
 		void setLvar(unsigned short id, unsigned short value);
 		void setHvar(int id);
 		void logLvars(); // Just print to log for now
+		void getLvarValues(map<string, double >& returnMap);
 		void logHvars(); // Just print to log for now
 		void getLvarList(unordered_map<int, string >& returnMap);
 		void getHvarList(unordered_map<int, string >& returnMap);
