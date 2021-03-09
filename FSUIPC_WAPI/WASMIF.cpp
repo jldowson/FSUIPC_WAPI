@@ -181,10 +181,12 @@ DWORD WINAPI WASMIF::StaticSimConnectThreadStart(void* Param) {
 
 
 bool WASMIF::start() {
+	char szLogBuffer[256];
 	DWORD workerThreadId = NULL;
 	quit = 0;
+	HRESULT hr;
 
-	if (SUCCEEDED(SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, 0)))
+	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, 0)))
 	{
 		LOG_INFO("Connected to MSFS");
 
@@ -205,8 +207,10 @@ bool WASMIF::start() {
 		}
 		return TRUE;
 	}
-	else
-		LOG_ERROR("Failed on SimConnect Open: cannot connect");
+	else {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Failed on SimConnect Open: cannot connect: %s", hr == E_INVALIDARG ? "E_INVALIDARG":"E_FAIL");
+		LOG_ERROR(szLogBuffer);
+	}
 
 	return FALSE;
 }
