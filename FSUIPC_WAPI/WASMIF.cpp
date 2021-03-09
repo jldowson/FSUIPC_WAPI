@@ -629,9 +629,8 @@ double WASMIF::getLvar(const char* lvarName) {
 }
 
 void WASMIF::getLvarValues(map<string, double >& returnMap) {
-	int lvarId;
 
-	for (lvarId = 0; lvarId < lvarNames.size(); lvarId++) {
+	for (int lvarId = 0; lvarId < lvarNames.size(); lvarId++) {
 		EnterCriticalSection(&lvarMutex);
 		returnMap.insert(make_pair(lvarNames.at(lvarId), lvarValues.at(lvarId)));
 		LeaveCriticalSection(&lvarMutex);
@@ -639,7 +638,6 @@ void WASMIF::getLvarValues(map<string, double >& returnMap) {
 }
 
 void WASMIF::setLvar(unsigned short id, unsigned short value) {
-	BOOL isNegative = FALSE;
 
 	DWORD param;
 	BYTE* p = (BYTE*)&param;
