@@ -3,10 +3,8 @@
 #include <windows.h>
 #include <string>
 #include "WASM.h"
-#include "Logger.h"
 
 using namespace std;
-using namespace CPlusPlusLogging;
 
 namespace ClientDataAreaMSFS
 {

@@ -107,7 +107,7 @@ Logger* Logger::getInstance(void (*loggerFunction)(const char* fmt)) throw ()
     }
     return m_Instance;
 }
-void Logger::setLoggerFunction(void (*loggerFunction)(const char* fmt)) throw ()
+void Logger::setLoggerFunction(void (*loggerFunction)(const char* fmt))
 {
     this->loggerFunction = loggerFunction;
 }

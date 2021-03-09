@@ -3,11 +3,14 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include "Logger.h"
 
+
+using namespace CPlusPlusLogging;
 
 WASMIF* WASMIF::m_Instance = 0;
 int WASMIF::nextDefinitionID = 1; // 1 taken by config CDA
-Logger* WASMIF::pLogger = nullptr;
+Logger* pLogger = nullptr;
 
 
 WASMIF::WASMIF() {
@@ -61,8 +64,8 @@ WASMIF* WASMIF::GetInstance(HWND hWnd, void (*loggerFunction)(const char* logStr
 }
 
 
-void WASMIF::setLogLevel(LogLevel logLevel) {
-	pLogger->updateLogLevel(logLevel);
+void WASMIF::setLogLevel(LOGLEVEL logLevel) {
+	pLogger->updateLogLevel((LogLevel)logLevel);
 }
 
 
@@ -653,7 +656,7 @@ void WASMIF::setLvar(unsigned short id, const char* value) {
 		// use converted
 		// Check if we have an integer
 		int i, r, n;
-		r = sscanf_s(value, "%d%n", &i, &n, sizeof(value));
+		r = sscanf_s(value, "%d%n", &i, &n);
 		if (r == 1 && n == strlen(value)) {
 			// converted is integer
 			if (converted > 0 && converted < 65536) {
@@ -748,7 +751,7 @@ void WASMIF::executeCalclatorCode(const char* code) {
 }
 
 
-void WASMIF::listLvars() {
+void WASMIF::logLvars() {
 	char szLogBuffer[256];
 	for (int i = 0; i < lvarNames.size(); i++) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "ID=%03d %s = %f", i, lvarNames.at(i).c_str(), lvarValues.at(i));
@@ -777,7 +780,7 @@ void WASMIF::setHvar(int id) {
 }
 
 
-void WASMIF::listHvars() {
+void WASMIF::logHvars() {
 	char szLogBuffer[256];
 	for (int i = 0; i < hvarNames.size(); i++) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "ID=%03d %s", i, hvarNames.at(i).c_str());

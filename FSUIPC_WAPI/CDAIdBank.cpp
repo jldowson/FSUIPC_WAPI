@@ -17,7 +17,6 @@ CDAIdBank::~CDAIdBank() {
 
 
 pair<string, int> CDAIdBank::getId(int size) {
-	char szLogBuffer[512];
 	pair<string, int> returnVal;
 	std::map<int, pair<string, int>>::iterator it;
 

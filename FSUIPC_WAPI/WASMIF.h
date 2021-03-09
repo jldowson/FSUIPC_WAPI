@@ -5,13 +5,11 @@
 #include <unordered_map>
 #include <vector>
 #include "SimConnect.h"
-#include "ClientDataArea.h"
 #include "WASM.h"
-#include "Logger.h"
+#include "ClientDataArea.h"
 #include "CDAIdBank.h"
 
 using namespace ClientDataAreaMSFS;
-using namespace CPlusPlusLogging;
 using namespace CDAIdBankMSFS;
 
 using namespace std;
@@ -27,6 +25,16 @@ enum WASM_EVENT_ID {
 	EVENT_VALUES_RECEIVED=10, // Only one needed
 	EVENT_LVARS_RECEIVED=11, // Allow for MAX_NO_LVAR_CDAS (4)
 	EVENT_HVARS_RECEIVED=15, // Allow for MAX_NO_HVAR_CDAS (4)
+};
+
+enum LOGLEVEL
+{
+	DISABLE_LOG = 1,
+	LOG_LEVEL_INFO = 2,
+	LOG_LEVEL_BUFFER = 3,
+	LOG_LEVEL_DEBUG = 4,
+	LOG_LEVEL_TRACE = 5,
+	ENABLE_LOG = 6,
 };
 
 /**
@@ -50,7 +58,7 @@ class WASMIF
 		void reload();
 		void setLvarUpdateFrequency(int freq);
 		int getLvarUpdateFrequency();
-		void setLogLevel(LogLevel logLevel);
+		void setLogLevel(LOGLEVEL logLevel);
 		double getLvar(int lvarID);
 		double getLvar(const char * lvarName);
 		void setLvar(unsigned short id, double value);
@@ -58,8 +66,8 @@ class WASMIF
 		void setLvar(unsigned short id, const char *value);
 		void setLvar(unsigned short id, unsigned short value);
 		void setHvar(int id);
-		void listLvars(); // Just print to log for now
-		void listHvars(); // Just print to log for now
+		void logLvars(); // Just print to log for now
+		void logHvars(); // Just print to log for now
 		void getLvarList(unordered_map<int, string >& returnMap);
 		void getHvarList(unordered_map<int, string >& returnMap);
 		void executeCalclatorCode(const char *code);
@@ -95,7 +103,6 @@ class WASMIF
 		ClientDataArea* hvar_cdas[MAX_NO_HVAR_CDAS];
 		ClientDataArea* value_cda;
 		static int nextDefinitionID;
-		static Logger* pLogger;
 		vector<string> lvarNames;
 		vector<double> lvarValues;
 		vector<string> hvarNames;
