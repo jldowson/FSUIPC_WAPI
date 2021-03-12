@@ -19,6 +19,6 @@ You can then get/set/list lvars and list/activate hvars using the provided membe
 <code>        WASMPtr->setLvar(int id, double value);</code><br>
               etc<br>
   
-A demo test vlient using this API is available here: https://github.com/jldowson/WASMClient
+A demo test client using this API is available here: https://github.com/jldowson/WASMClient
 
 Note: to build from source, the MSFS SDK is referenced from C:\MSFS-SDK. You can change the build properties to point to your MSFS SDK installation, or create a symbolic link (or junction) to link that location to yout actial installation location.
