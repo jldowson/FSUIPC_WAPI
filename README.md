@@ -5,18 +5,17 @@ FSUIPC_WAPI is a clinet-side API library for communication with the FSUIPC WASM 
 This allows for the retrieval/listing of lbars/hvars, for the setting of lvars and the activation of hvars.
 
 The WASMIF class is the main interface. To use, first instantiate a WASMIF object:<br>
-        <code>WASMIF* WASMIFPtr = WASMIF::getInstance(hWnd);</code><br>
+<code>        WASMIF* WASMIFPtr = WASMIF::getInstance(hWnd);</code><br>
 Then start the service:<br>
-        <code>WASMIFPtr->start();</code><br>
+<code>        WASMIFPtr->start();</code><br>
 You can then get/set/list lvars and list/activate hvars using the provided member functions, e,g.<br>
-<code>
-        WASMPtr->getLvarValues(map<string, double> lvars);<br>
-        WASMPtr->getHvarList(unordered_map<int, string> hvars);<br>
-        double value = WASMPtr->getLvar(const char* lvarName);<br>
-        WASMPtr->setHvar(int id);<br>
-        WASMPtr->executeCalclatorCode(const char* ccode);<br>
-        WASMPtr->setLvar(int id, double value);<br>
-        etc<br>
+<code>        WASMPtr->getLvarValues(map<string, double> lvars);</code><br>
+<code>        WASMPtr->getHvarList(unordered_map<int, string> hvars);</code><br>
+<code>        double value = WASMPtr->getLvar(const char* lvarName);</code><br>
+<code>        WASMPtr->setHvar(int id);</code><br>
+<code>        WASMPtr->executeCalclatorCode(const char* ccode);</code><br>
+<code>        WASMPtr->setLvar(int id, double value);</code><br>
+<code>        etc</code><br>
 </code>
 A demo test vlient using this API is available here: https://github.com/jldowson/WASMClient
 
