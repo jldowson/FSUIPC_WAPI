@@ -1,7 +1,7 @@
 # FSUIPC_WAPI
 API for connection to the FSUIPC WASM Module
 
-FSUIPC_WAPI is a clinet-side API library for communication with the FSUIPC WASM module.
+FSUIPC_WAPI is a client-side API library for communication with the FSUIPC WASM module.
 This allows for the retrieval/listing of lbars/hvars, for the setting of lvars and the activation of hvars.
 
 The WASMIF class is the main interface. To use, first instantiate a WASMIF object:<br>
