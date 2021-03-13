@@ -23,9 +23,14 @@ WASMIF::WASMIF() {
 	value_cda = nullptr;
 	lvarUpdateFrequency = 0;
 	InitializeCriticalSection(&lvarMutex);
+	simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL; // = -1
 }
 
 WASMIF::~WASMIF() {}
+
+void WASMIF::setSimConfigConnection(int simConnection) {
+	simConnection = simConnection;
+}
 
 
 WASMIF* WASMIF::GetInstance(HWND hWnd, int startEventNo, void (*loggerFunction)(const char* logString)) {
@@ -186,7 +191,7 @@ bool WASMIF::start() {
 	quit = 0;
 	HRESULT hr;
 
-	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, 0)))
+	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, simConnection)))
 	{
 		LOG_INFO("Connected to MSFS");
 

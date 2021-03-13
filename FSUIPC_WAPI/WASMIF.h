@@ -57,6 +57,7 @@ class WASMIF
 		void createAircraftLvarFile();
 		void reload();
 		void setLvarUpdateFrequency(int freq);
+		void setSimConfigConnection(int connection);
 		int getLvarUpdateFrequency();
 		void setLogLevel(LOGLEVEL logLevel);
 		double getLvar(int lvarID);
@@ -108,6 +109,7 @@ class WASMIF
 		vector<double> lvarValues;
 		vector<string> hvarNames;
 		CDAIdBank* cdaIdBank;
+		int simConnection;
 		CRITICAL_SECTION        lvarMutex;
 };
 
