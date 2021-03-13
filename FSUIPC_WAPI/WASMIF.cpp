@@ -28,8 +28,8 @@ WASMIF::WASMIF() {
 
 WASMIF::~WASMIF() {}
 
-void WASMIF::setSimConfigConnection(int simConnection) {
-	simConnection = simConnection;
+void WASMIF::setSimConfigConnection(int connection) {
+	simConnection = connection;
 }
 
 
