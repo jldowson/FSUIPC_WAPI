@@ -18,7 +18,7 @@ CDAIdBank::~CDAIdBank() {
 
 pair<string, int> CDAIdBank::getId(int size) {
 	pair<string, int> returnVal;
-	std::map<int, pair<string, int>>::iterator it;
+	std::multimap<int, pair<string, int>>::iterator it;
 
 	// First, check if we have one available
 	it = availableBank.find(size);
@@ -30,7 +30,7 @@ pair<string, int> CDAIdBank::getId(int size) {
 	}
 	else {
 		// Create new CDA
-		string newName = string(CDA_NAME_TEMPLATE + to_string(nextId));
+		string newName = string(CDA_NAME_TEMPLATE + to_string((long long)nextId));
 		returnVal = getId(size, newName);
 	}
 
@@ -41,7 +41,7 @@ pair<string, int> CDAIdBank::getId(int size) {
 pair<string, int> CDAIdBank::getId(int size, string name) {
 	char szLogBuffer[512];
 	pair<string, int> returnVal;
-	std::map<int, pair<string, int>>::iterator it;
+	std::multimap<int, pair<string, int>>::iterator it;
 	DWORD dwLastID;
 
 	// First, check if we have one available
