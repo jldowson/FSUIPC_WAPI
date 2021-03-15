@@ -454,7 +454,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			// Set to reload lvar/hvar tables when we receive the data
 			hvarNames.clear();
 			lvarNames.clear();
+			EnterCriticalSection(&lvarMutex);
 			lvarValues.clear();
+			LeaveCriticalSection(&lvarMutex);
 
 			// Request config data again when set and changed
 			if (!SUCCEEDED(SimConnect_RequestClientData(hSimConnect, 1, EVENT_CONFIG_RECEIVED, 1,
@@ -465,10 +467,12 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_TRACE("Config data updates requested.");
 			break;
 		}
-		case EVENT_LVARS_RECEIVED: // Allow for 4 distinct lvar CDAs
+		case EVENT_LVARS_RECEIVED: // Allow for 6 distinct lvar CDAs
 		case EVENT_LVARS_RECEIVED + 1:
 		case EVENT_LVARS_RECEIVED + 2:
 		case EVENT_LVARS_RECEIVED + 3:
+		case EVENT_LVARS_RECEIVED + 4:
+		case EVENT_LVARS_RECEIVED + 5:
 		{
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 					pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
@@ -487,7 +491,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "LVAR Data: name='%s'", lvars[i].name);
 					LOG_TRACE(szLogBuffer);
 					lvarNames.push_back(string(lvars[i].name));
+//					EnterCriticalSection(&lvarMutex);
 					lvarValues.push_back(0.0);
+//					LeaveCriticalSection(&lvarMutex);
 				}
 			}
 			else {
@@ -639,11 +645,11 @@ double WASMIF::getLvar(const char* lvarName) {
 
 void WASMIF::getLvarValues(map<string, double >& returnMap) {
 
+	EnterCriticalSection(&lvarMutex);
 	for (int lvarId = 0; lvarId < lvarNames.size(); lvarId++) {
-		EnterCriticalSection(&lvarMutex);
 		returnMap.insert(make_pair(lvarNames.at(lvarId), lvarValues.at(lvarId)));
-		LeaveCriticalSection(&lvarMutex);
 	}
+	LeaveCriticalSection(&lvarMutex);
 }
 
 void WASMIF::setLvar(unsigned short id, unsigned short value) {
@@ -769,10 +775,14 @@ void WASMIF::executeCalclatorCode(const char* code) {
 
 void WASMIF::logLvars() {
 	char szLogBuffer[256];
+	sprintf(szLogBuffer, "We have %03d lvars: ", lvarNames.size());
+	LOG_INFO(szLogBuffer);
+	EnterCriticalSection(&lvarMutex);
 	for (int i = 0; i < lvarNames.size(); i++) {
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "ID=%03d %s = %f", i, lvarNames.at(i).c_str(), lvarValues.at(i));
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "    ID=%03d %s = %f", i, lvarNames.at(i).c_str(), lvarValues.at(i));
 		LOG_INFO(szLogBuffer);
 	}
+	LeaveCriticalSection(&lvarMutex);
 }
 
 
