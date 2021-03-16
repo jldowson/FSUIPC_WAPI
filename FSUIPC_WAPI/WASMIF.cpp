@@ -77,9 +77,9 @@ void WASMIF::setLogLevel(LOGLEVEL logLevel) {
 const char* WASMIF::getEventString(int eventNo) {
 	std::stringstream stream;
 	stream << "#0x" << std::hex << startEventNo + eventNo;
-	std::string result(stream.str());
+	std::string* result = new std::string(stream.str());
 
-	return result.c_str();
+	return result->c_str();
 }
 
 
@@ -775,7 +775,7 @@ void WASMIF::executeCalclatorCode(const char* code) {
 
 void WASMIF::logLvars() {
 	char szLogBuffer[256];
-	sprintf(szLogBuffer, "We have %03d lvars: ", lvarNames.size());
+	sprintf(szLogBuffer, "We have %03llu lvars: ", lvarNames.size());
 	LOG_INFO(szLogBuffer);
 	EnterCriticalSection(&lvarMutex);
 	for (int i = 0; i < lvarNames.size(); i++) {

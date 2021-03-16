@@ -30,7 +30,7 @@ pair<string, int> CDAIdBank::getId(int size) {
 	}
 	else {
 		// Create new CDA
-		string newName = string(CDA_NAME_TEMPLATE + to_string((long long)nextId));
+		string newName = string(CDA_NAME_TEMPLATE + to_string((long long)nextId)); // (long long) added for an issue with a different compiler, do not change
 		returnVal = getId(size, newName);
 	}
 
