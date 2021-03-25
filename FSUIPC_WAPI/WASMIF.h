@@ -20,7 +20,6 @@ enum WASM_EVENT_ID {
 	EVENT_UPDATE_CDAS,		// map to StartEventNo + 3
 	EVENT_LIST_LVARS,		// map to StartEventNo + 4
 	EVENT_RELOAD,			// map to StartEventNo + 5
-	EVENT_SET_LVARNEG,		// map to StartEventNo + 6
 	EVENT_CONFIG_RECEIVED=9,
 	EVENT_VALUES_RECEIVED=10, // Only one needed
 	EVENT_LVARS_RECEIVED=11, // Allow for MAX_NO_LVAR_CDAS (6)
@@ -37,16 +36,6 @@ enum LOGLEVEL
 	ENABLE_LOG = 6,
 };
 
-/**
-struct _ClientDataArea {
-	int id;
-	string name;
-	int size;
-	int noItems;
-	int definitionId;
-	CDAType type;
-} ClientDataArea;
-**/
 class WASMIF
 {
 	public:

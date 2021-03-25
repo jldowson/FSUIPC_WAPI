@@ -93,7 +93,6 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_UPDATE_CDAS, getEventString(EVENT_UPDATE_CDAS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_LIST_LVARS, getEventString(EVENT_LIST_LVARS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_RELOAD, getEventString(EVENT_RELOAD));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARNEG, getEventString(EVENT_SET_LVARNEG));
 
 	hr = SimConnect_SetNotificationGroupPriority(hSimConnect, 1, SIMCONNECT_GROUP_PRIORITY_HIGHEST);
 
