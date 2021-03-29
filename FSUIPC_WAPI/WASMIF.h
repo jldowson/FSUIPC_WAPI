@@ -62,6 +62,8 @@ class WASMIF
 		void getLvarList(unordered_map<int, string >& returnMap);
 		void getHvarList(unordered_map<int, string >& returnMap);
 		void executeCalclatorCode(const char *code);
+		int getLvarIdFromName(const char* lvarName);
+		void getLvarNameFromId(int id, char* name);
 
 	public:
 		static void CALLBACK MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);

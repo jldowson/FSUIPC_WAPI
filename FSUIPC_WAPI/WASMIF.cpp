@@ -820,3 +820,13 @@ void WASMIF::getHvarList(unordered_map<int, string >& returnMap) {
 	}
 }
 
+int WASMIF::getLvarIdFromName(const char* lvarName) {
+	for (int i = 0; i < lvarNames.size(); i++) {
+		if (lvarNames.at(i) == string(lvarName)) return i;
+	}
+	return -1;
+}
+void WASMIF::getLvarNameFromId(int id, char* name) {
+	if (id >= 0 && id < lvarNames.size())
+		strcpy(name, lvarNames.at(id).c_str());
+}
