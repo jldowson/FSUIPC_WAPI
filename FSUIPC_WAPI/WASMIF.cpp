@@ -363,8 +363,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				if (!configData->CDA_Size[i]) break;
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Config Data: name=%s, size=%d, type=%d", configData->CDA_Names[i], configData->CDA_Size[i], configData->CDA_Type[i]);
 				LOG_DEBUG(szLogBuffer);
-				if (configData->CDA_Type[i] == LVAR) noLvarCDAs++;
-				else if (configData->CDA_Type[i] == HVAR) noHvarCDAs++;
+				if (configData->CDA_Type[i] == LVARF) noLvarCDAs++;
+				else if (configData->CDA_Type[i] == HVARF) noHvarCDAs++;
 			}
 
 			if (!(noLvarCDAs + noHvarCDAs)) {
@@ -384,13 +384,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				ClientDataArea* cda = new ClientDataArea(cdaDetails.first.c_str(), configData->CDA_Size[i], configData->CDA_Type[i]);
 				cda->setId(cdaDetails.second);
 				switch (configData->CDA_Type[i]) {
-					case LVAR:
+					case LVARF:
 						lvar_cdas[lvarCount] = cda;
 						break;
-					case HVAR:
+					case HVARF:
 						hvar_cdas[hvarCount] = cda;
 						break;
-					case VALUE:
+					case VALUEF:
 						value_cda = cda;
 						break;
 				}
@@ -404,13 +404,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				{
 					switch (configData->CDA_Type[i])
 					{
-					case LVAR:
+					case LVARF:
 						lvar_cdas[lvarCount]->setDefinitionId(nextDefinitionID);
 						break;
-					case HVAR:
+					case HVARF:
 						hvar_cdas[hvarCount]->setDefinitionId(nextDefinitionID);
 						break;
-					case VALUE:
+					case VALUEF:
 						value_cda->setDefinitionId(nextDefinitionID);
 						break;
 					}
@@ -421,15 +421,15 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				// Now, add lvars to data area
 				HRESULT hr;
 				switch (configData->CDA_Type[i]) {
-					case LVAR:
+					case LVARF:
 						hr = SimConnect_RequestClientData(hSimConnect, cda->getId(),
 								EVENT_LVARS_RECEIVED + lvarCount++, nextDefinitionID++, SIMCONNECT_CLIENT_DATA_PERIOD_ONCE, SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_DEFAULT);
 						break;
-					case HVAR:
+					case HVARF:
 						hr = SimConnect_RequestClientData(hSimConnect, cda->getId(),
 								EVENT_HVARS_RECEIVED + hvarCount++, nextDefinitionID++, SIMCONNECT_CLIENT_DATA_PERIOD_ONCE, SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_DEFAULT); // SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET?
 						break;
-					case VALUE:
+					case VALUEF:
 						hr = SimConnect_RequestClientData(hSimConnect, cda->getId(),
 								EVENT_VALUES_RECEIVED, nextDefinitionID++, SIMCONNECT_CLIENT_DATA_PERIOD_ON_SET, SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_CHANGED);
 						break;
@@ -829,4 +829,14 @@ int WASMIF::getLvarIdFromName(const char* lvarName) {
 void WASMIF::getLvarNameFromId(int id, char* name) {
 	if (id >= 0 && id < lvarNames.size())
 		strcpy(name, lvarNames.at(id).c_str());
+}
+
+bool WASMIF::createLvar(const char* lvarName, DWORD value) {
+	if (strlen(lvarName) > MAX_VAR_NAME_SIZE)
+		return FALSE;
+
+	char ccode[MAX_VAR_NAME_SIZE+20];
+	sprintf_s(ccode, sizeof(ccode), "::%s\n%X", lvarName, value);
+	executeCalclatorCode(ccode);
+	return TRUE;
 }

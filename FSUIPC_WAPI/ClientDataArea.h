@@ -5,6 +5,7 @@
 #include "WASM.h"
 
 using namespace std;
+using namespace WASM;
 
 namespace ClientDataAreaMSFS
 {

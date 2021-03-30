@@ -6,7 +6,7 @@
 #define MAX_VAR_NAME_SIZE		56 // Max size of a CDA is 8k. So Max no lvars per CDK is
  //   8192/(this valuw) = 146
 #define MAX_CDA_NAME_SIZE		64 
-#define MAX_NO_LVAR_CDAS		6 // Allows for 876 lvars (6*(8k/56)): 8 is max and allows for 1024 lvars, the max allowd for the value area (8k/8)
+#define MAX_NO_LVAR_CDAS		7 // Allows for 1022 lvars (7*(8k/56)): 8 is max and allows for 1024 lvars, the max allowd for the value area (8k/8)
 #define MAX_NO_HVAR_CDAS		4 // We can have more of these if needed
 #define CONFIG_CDA_NAME			"FSUIPC_config"
 #define LVARVALUE_CDA_NAME		"FSUIPC_SetLvar"
@@ -25,36 +25,37 @@
 #define EVENT_START_NO			0x1FFF0
 
 #pragma pack(push, 1)
-typedef struct _CDASETLVAR
-{
-	int id;
-	double lvarValue;
-} CDASETLVAR;
+namespace WASM {
+	typedef struct _CDASETLVAR
+	{
+		int id;
+		double lvarValue;
+	} CDASETLVAR;
 
-typedef struct _CDACALCCODE
-{
-	char calcCode[MAX_CALC_CODE_SIZE];
-} CDACALCCODE;
+	typedef struct _CDACALCCODE
+	{
+		char calcCode[MAX_CALC_CODE_SIZE];
+	} CDACALCCODE;
 
-typedef struct _CDAName
-{
-	char name[MAX_VAR_NAME_SIZE];
-} CDAName;
+	typedef struct _CDAName
+	{
+		char name[MAX_VAR_NAME_SIZE];
+	} CDAName;
 
-typedef struct _CDAValue
-{
-	double value;
-} CDAValue;
+	typedef struct _CDAValue
+	{
+		double value;
+	} CDAValue;
 
-typedef enum {
-	LVAR, HVAR, VALUE
-} CDAType;
+	typedef enum {
+		LVARF, HVARF, VALUEF
+	} CDAType;
 
-typedef struct _CONFIG_CDA
-{
-	char CDA_Names[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + 1][MAX_CDA_NAME_SIZE];
-	int CDA_Size[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + 1];
-	CDAType CDA_Type[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + 1];
-} CONFIG_CDA;
-
+	typedef struct _CONFIG_CDA
+	{
+		char CDA_Names[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + 1][MAX_CDA_NAME_SIZE];
+		int CDA_Size[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + 1];
+		CDAType CDA_Type[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + 1];
+	} CONFIG_CDA;
+}
 #pragma pack(pop)

@@ -64,6 +64,7 @@ class WASMIF
 		void executeCalclatorCode(const char *code);
 		int getLvarIdFromName(const char* lvarName);
 		void getLvarNameFromId(int id, char* name);
+		bool createLvar(const char* lvarName, DWORD value);
 
 	public:
 		static void CALLBACK MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);

@@ -11,13 +11,13 @@ using namespace ClientDataAreaMSFS;
 ClientDataArea::ClientDataArea(const string& cdaName, int size, CDAType type)
 {
 	switch (type) {
-		case LVAR:
+		case LVARF:
 			noItems = size / sizeof(CDAName);
 			break;
-		case HVAR:
+		case HVARF:
 			noItems = size / sizeof(CDAName);
 			break;
-		case VALUE:
+		case VALUEF:
 			noItems = size / sizeof(CDAValue);
 			break;
 	}
