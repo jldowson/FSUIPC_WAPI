@@ -835,8 +835,8 @@ bool WASMIF::createLvar(const char* lvarName, DWORD value) {
 	if (strlen(lvarName) > MAX_VAR_NAME_SIZE)
 		return FALSE;
 
-	char ccode[MAX_VAR_NAME_SIZE+20];
-	sprintf_s(ccode, sizeof(ccode), "::%s\n%X", lvarName, value);
+	char ccode[MAX_CALC_CODE_SIZE];
+	sprintf_s(ccode, sizeof(ccode), "::%s = %X", lvarName, value);
 	executeCalclatorCode(ccode);
 	return TRUE;
 }
