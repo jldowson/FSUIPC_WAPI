@@ -21,8 +21,8 @@ enum WASM_EVENT_ID {
 	EVENT_LIST_LVARS,		// map to StartEventNo + 4
 	EVENT_RELOAD,			// map to StartEventNo + 5
 	EVENT_CONFIG_RECEIVED=9,
-	EVENT_VALUES_RECEIVED=10, // Only one needed
-	EVENT_LVARS_RECEIVED=11, // Allow for MAX_NO_LVAR_CDAS (8)
+	EVENT_VALUES_RECEIVED=10, // Only two needed
+	EVENT_LVARS_RECEIVED=12, // Allow for MAX_NO_LVAR_CDAS (8)
 	EVENT_HVARS_RECEIVED=20, // Allow for MAX_NO_HVAR_CDAS (4)
 };
 
@@ -95,7 +95,7 @@ class WASMIF
 		BOOL configReceived;
 		ClientDataArea* lvar_cdas[MAX_NO_LVAR_CDAS];
 		ClientDataArea* hvar_cdas[MAX_NO_HVAR_CDAS];
-		ClientDataArea* value_cda;
+		ClientDataArea* value_cda[MAX_NO_VALUE_CDAS];
 		static int nextDefinitionID;
 		vector<string> lvarNames;
 		vector<double> lvarValues;
