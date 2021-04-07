@@ -554,7 +554,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_VALUES_RECEIVED + 1:
 		{
 			if (lvarNames.size() <= 1024) {
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: Ignoreing as we only have %d lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: Ignoring as we only have %llu lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
 					lvarNames.size(), pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 				LOG_DEBUG(szLogBuffer);
 				break;
@@ -647,6 +647,7 @@ int WASMIF::getLvarUpdateFrequency() {
 
 
 double WASMIF::getLvar(int lvarID) {
+	if (lvarID < 0 || lvarID >= lvarValues.size()) return NULL;
 	EnterCriticalSection(&lvarMutex);
 	double result = lvarValues.at(lvarID);
 	LeaveCriticalSection(&lvarMutex);
@@ -854,6 +855,7 @@ int WASMIF::getLvarIdFromName(const char* lvarName) {
 void WASMIF::getLvarNameFromId(int id, char* name) {
 	if (id >= 0 && id < lvarNames.size())
 		strcpy(name, lvarNames.at(id).c_str());
+	else name = NULL;
 }
 
 bool WASMIF::createLvar(const char* lvarName, DWORD value) {
