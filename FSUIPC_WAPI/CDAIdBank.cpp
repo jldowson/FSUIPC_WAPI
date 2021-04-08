@@ -16,47 +16,32 @@ CDAIdBank::~CDAIdBank() {
 }
 
 
-pair<string, int> CDAIdBank::getId(int size) {
-	pair<string, int> returnVal;
-	std::multimap<int, pair<string, int>>::iterator it;
-
-	// First, check if we have one available
-	it = availableBank.find(size);
-	if (it != availableBank.end()) {
-		returnVal = make_pair(it->second.first, it->second.second);
-		availableBank.erase(it);
-		pair<int, pair<string, int>> out = make_pair(returnVal.second, make_pair(returnVal.first, size));
-		outBank.insert(out);
-	}
-	else {
-		// Create new CDA
-		string newName = string(CDA_NAME_TEMPLATE + to_string((long long)nextId)); // (long long) added for an issue with a different compiler, do not change
-		returnVal = getId(size, newName);
-	}
-
-	return returnVal;
-}
-
-
 pair<string, int> CDAIdBank::getId(int size, string name) {
 	char szLogBuffer[512];
 	pair<string, int> returnVal;
-	std::multimap<int, pair<string, int>>::iterator it;
+	std::multimap<string, pair<int, int>>::iterator it;
 	DWORD dwLastID;
 
 	// First, check if we have one available
-	it = availableBank.find(size);
+	it = availableBank.find(name);
 	if (it != availableBank.end()) {
-		returnVal = make_pair(it->second.first, it->second.second);
-		availableBank.erase(it);
-		pair<int, pair<string, int>> out = make_pair(returnVal.second, make_pair(returnVal.first, size));
-		outBank.insert(out);
+		// Check size matches
+		if (size == it->second.first) {
+			returnVal = make_pair(it->first, it->second.second);
+			availableBank.erase(it);
+			pair<string, pair<int, int>> out = make_pair(returnVal.first, make_pair(returnVal.second, size));
+			outBank.insert(out);
+			return returnVal;
+		}
+		else { // Lets remove
+			availableBank.erase(it);
+		}
 	}
-	else {
+
 		// Create new CDA
 		string newName = string(name);
 		returnVal = make_pair(newName, nextId);
-		pair<int, pair<string, int>> out = make_pair(nextId, make_pair(newName, size));
+		pair<string, pair<int, int>> out = make_pair(newName, make_pair(nextId, size));
 		outBank.insert(out);
 
 		// Set-up CDA
@@ -81,22 +66,21 @@ pair<string, int> CDAIdBank::getId(int size, string name) {
 			LOG_DEBUG(szLogBuffer);
 		}
 		nextId++;
-	}
+
 
 	return returnVal;
 
 }
 
 
-void CDAIdBank::returnId(int id) {
-	std::map<int, pair<string, int>>::iterator it;
+void CDAIdBank::returnId(string name) {
+	std::map<string, pair<int, int>>::iterator it;
 	// First, check if we have one available
-	it = outBank.find(id);
+	it = outBank.find(name);
 	if (it != outBank.end()) {
-		pair<string, int> p = outBank.at(id);
-		pair<int, pair<string, int>> returnedItem = make_pair(p.second, make_pair(p.first, id));
+		pair<int, int> p = outBank.at(name);
+		pair<string, pair<int, int>> returnedItem = make_pair(name, p);
 		outBank.erase(it);
 		availableBank.insert(returnedItem);
 	}
-
 }

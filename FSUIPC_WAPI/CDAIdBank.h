@@ -14,16 +14,15 @@ namespace CDAIdBankMSFS {
 	public:
 		CDAIdBank(int id, HANDLE hSimConnect);
 		~CDAIdBank();
-		pair<string, int> getId(int size);
 		pair<string, int> getId(int size, string);
-		void returnId(int id);
+		void returnId(string name);
 
 	protected:
 
 	private:
 		int nextId;
-		multimap<int, pair<string, int>> availableBank; // keyed on size
-		map<int, pair<string, int>> outBank; // keyed on Id
+		multimap<string, pair<int, int>> availableBank; // keyed on name
+		map<string, pair<int, int>> outBank; // keyed on name
 		HANDLE  hSimConnect;
   };
 } // End of namespace

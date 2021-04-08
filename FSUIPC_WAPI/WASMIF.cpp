@@ -316,6 +316,12 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				requestTimer = 0;
 			}
 
+			// Clear current lvar/hvar names and lvar values - these will be rebuilt when we receive the data
+			hvarNames.clear();
+			lvarNames.clear();
+			EnterCriticalSection(&lvarMutex);
+			lvarValues.clear();
+			LeaveCriticalSection(&lvarMutex);
 
 			// Drop existing CDAs
 			for (int i = 0; i < MAX_NO_VALUE_CDAS; i++) {
@@ -325,7 +331,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 						sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing lvar value data definition with id=%d", value_cda[i]->getId());
 						LOG_ERROR(szLogBuffer);
 					}
-					cdaIdBank->returnId(value_cda[i]->getId());
+					cdaIdBank->returnId(value_cda[i]->getName());
 					delete value_cda[i];
 					value_cda[i] = 0;
 				}
@@ -338,7 +344,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing lvar data definition with id=%d", lvar_cdas[i]->getId());
 					LOG_ERROR(szLogBuffer);
 				}
-				cdaIdBank->returnId(lvar_cdas[i]->getId());
+				cdaIdBank->returnId(lvar_cdas[i]->getName());
 				delete lvar_cdas[i];
 				lvar_cdas[i] = 0;
 			}
@@ -351,7 +357,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing hvar data definition with id=%d", hvar_cdas[i]->getId());
 					LOG_ERROR(szLogBuffer);
 				}
-				cdaIdBank->returnId(hvar_cdas[i]->getId());
+				cdaIdBank->returnId(hvar_cdas[i]->getName());
 				delete hvar_cdas[i];
 				hvar_cdas[i] = 0;
 			}
@@ -451,12 +457,6 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				requestTimer = SetTimer(hWnd, UINT_PTR(this), 1000/(this->getLvarUpdateFrequency()), &WASMIF::StaticRequestDataTimer);
 			}
 
-			// Set to reload lvar/hvar tables when we receive the data
-			hvarNames.clear();
-			lvarNames.clear();
-			EnterCriticalSection(&lvarMutex);
-			lvarValues.clear();
-			LeaveCriticalSection(&lvarMutex);
 
 			// Request config data again when set and changed
 			if (!SUCCEEDED(SimConnect_RequestClientData(hSimConnect, 1, EVENT_CONFIG_RECEIVED, 1,
@@ -493,9 +493,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "LVAR Data: name='%s'", lvars[i].name);
 					LOG_TRACE(szLogBuffer);
 					lvarNames.push_back(string(lvars[i].name));
-//					EnterCriticalSection(&lvarMutex);
+					EnterCriticalSection(&lvarMutex);
 					lvarValues.push_back(0.0);
-//					LeaveCriticalSection(&lvarMutex);
+					LeaveCriticalSection(&lvarMutex);
 				}
 			}
 			else {
@@ -536,9 +536,11 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		}
 		case EVENT_VALUES_RECEIVED:
 		{
+			// Check values match definition
+			if (value_cda[0]->getDefinitionId() != pObjData->dwDefineID) break;
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
-			LOG_DEBUG(szLogBuffer);
+			LOG_TRACE(szLogBuffer);
 
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
 			EnterCriticalSection(&lvarMutex);
@@ -553,6 +555,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		}
 		case EVENT_VALUES_RECEIVED + 1:
 		{
+			// Check values match definition
+			if (value_cda[1]->getDefinitionId() != pObjData->dwDefineID) break;
 			if (lvarNames.size() <= 1024) {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: Ignoring as we only have %llu lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
 					lvarNames.size(), pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
@@ -561,11 +565,11 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
-			LOG_DEBUG(szLogBuffer);
+			LOG_TRACE(szLogBuffer);
 
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
 			EnterCriticalSection(&lvarMutex);
-			for (int i = 0; i < value_cda[1]->getNoItems(); i++)
+			for (int i = 0; i < value_cda[1]->getNoItems() && i+1024 < lvarNames.size(); i++)
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%f", i+1024, values[i].value);
 				LOG_TRACE(szLogBuffer);
