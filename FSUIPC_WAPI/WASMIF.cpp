@@ -185,9 +185,14 @@ DWORD WINAPI WASMIF::StaticSimConnectThreadStart(void* Param) {
 bool WASMIF::start() {
 	char szLogBuffer[256];
 	DWORD workerThreadId = NULL;
-	quit = 0;
 	HRESULT hr;
 
+	if (hSimConnect) {
+		LOG_ERROR("Already started!");
+		return FALSE;
+	}
+
+	quit = 0;
 	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, simConnection)))
 	{
 		LOG_INFO("Connected to MSFS");
