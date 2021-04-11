@@ -472,7 +472,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_TRACE("Config data updates requested.");
 			break;
 		}
-		case EVENT_LVARS_RECEIVED: // Allow for 8 distinct lvar CDAs
+		case EVENT_LVARS_RECEIVED: // Allow for 14 distinct lvar CDAs
 		case EVENT_LVARS_RECEIVED + 1:
 		case EVENT_LVARS_RECEIVED + 2:
 		case EVENT_LVARS_RECEIVED + 3:
@@ -480,6 +480,12 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_LVARS_RECEIVED + 5:
 		case EVENT_LVARS_RECEIVED + 6:
 		case EVENT_LVARS_RECEIVED + 7:
+		case EVENT_LVARS_RECEIVED + 8:
+		case EVENT_LVARS_RECEIVED + 9:
+		case EVENT_LVARS_RECEIVED + 10:
+		case EVENT_LVARS_RECEIVED + 11:
+		case EVENT_LVARS_RECEIVED + 12:
+		case EVENT_LVARS_RECEIVED + 13:
 		{
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 					pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
