@@ -64,6 +64,8 @@ class WASMIF
 		void executeCalclatorCode(const char *code);
 		int getLvarIdFromName(const char* lvarName);
 		void getLvarNameFromId(int id, char* name);
+		int getHvarIdFromName(const char* hvarName);
+		void getHvarNameFromId(int id, char* name);
 		bool createLvar(const char* lvarName, DWORD value);
 
 	public:

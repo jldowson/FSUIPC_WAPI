@@ -867,10 +867,24 @@ int WASMIF::getLvarIdFromName(const char* lvarName) {
 	}
 	return -1;
 }
+
 void WASMIF::getLvarNameFromId(int id, char* name) {
 	if (id >= 0 && id < lvarNames.size())
 		strcpy(name, lvarNames.at(id).c_str());
 	else name = NULL;
+}
+
+int WASMIF::getHvarIdFromName(const char* hvarName) {
+	for (int i = 0; i < hvarNames.size(); i++) {
+		if (hvarNames.at(i) == string(hvarName)) return i;
+	}
+	return -1;
+}
+
+void WASMIF::getHvarNameFromId(int id, char* name) {
+	if (id >= 0 && id < hvarNames.size())
+		strcpy(name, hvarNames.at(id).c_str());
+	else name[0] = 0;
 }
 
 bool WASMIF::createLvar(const char* lvarName, DWORD value) {
