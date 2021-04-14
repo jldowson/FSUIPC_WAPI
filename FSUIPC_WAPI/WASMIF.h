@@ -55,6 +55,10 @@ class WASMIF
 		void setLvar(unsigned short id, short value);
 		void setLvar(unsigned short id, const char *value);
 		void setLvar(unsigned short id, unsigned short value);
+		void setLvar(const char *lvarName, double value);
+		void setLvar(const char *lvarName, short value);
+		void setLvar(const char *lvarName, const char *value);
+		void setLvar(const char *lvarName, unsigned short value);
 		void setHvar(int id);
 		void logLvars(); // Just print to log for now
 		void getLvarValues(map<string, double >& returnMap);

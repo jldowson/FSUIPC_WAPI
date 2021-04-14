@@ -777,6 +777,119 @@ void WASMIF::setLvar(unsigned short id, short value) {
 	setLvar(param);
 }
 
+void WASMIF::setLvar(const char* lvarName, double value) {
+	char szLogBuffer[256];
+	DWORD dwLastID;
+	CDASETLVAR lvar;
+	lvar.id = getLvarIdFromName(lvarName);
+
+	if (lvar.id < 0) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %s=%f (No lvar with that name found)", lvarName, value);
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
+
+	lvar.lvarValue = value;
+	if (!SUCCEEDED(SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar))) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %d=%f", lvar.id, lvar.lvarValue);
+		LOG_ERROR(szLogBuffer);
+	}
+	else {
+		SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar set Client Data Area updated [requestID=%d]", dwLastID);
+		LOG_TRACE(szLogBuffer);
+	}
+}
+
+
+void WASMIF::setLvar(const char* lvarName, short value) {
+	int id = getLvarIdFromName(lvarName);
+
+	if (id < 0) {
+		char szLogBuffer[256];
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %s=%d (No lvar with that name found)", lvarName, value);
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
+
+	if (value < 0) {
+		value = -value;
+	}
+
+	DWORD param;
+	BYTE* p = (BYTE*)&param;
+
+	memcpy(p, &id, 2);
+	memcpy(p + 2, &value, 2);
+	setLvar(param);
+}
+
+
+void WASMIF::setLvar(const char* lvarName, const char* value) {
+	char szLogBuffer[512];
+	int id = getLvarIdFromName(lvarName);
+
+	if (id < 0) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %s=%s (No lvar with that name found)", lvarName, value);
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
+
+	char* p;
+	double converted = strtod(value, &p);
+	if (*p) {
+		// conversion failed because the input wasn't a number
+		memcpy(&converted, value, sizeof(double));
+		setLvar(id, converted);
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as string: %.*s", 8, (char*)&converted);
+		LOG_DEBUG(szLogBuffer);
+	}
+	else {
+		// use converted
+		// Check if we have an integer
+		int i, r, n;
+		r = sscanf_s(value, "%d%n", &i, &n);
+		if (r == 1 && n == strlen(value)) {
+			// converted is integer
+			if (converted > 0 && converted < 65536) {
+				unsigned short value = (unsigned short)converted;
+				setLvar(id, value);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as unsigned short: %u", value);
+				LOG_DEBUG(szLogBuffer);
+			}
+			else if (converted > -32769 && converted < 32768) {
+				short value = (short)converted;
+				setLvar(id, value);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as short: %u", value);
+				LOG_DEBUG(szLogBuffer);
+			}
+		}
+		else { // floating point number
+			setLvar(id, converted);
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as double: %f", converted);
+			LOG_DEBUG(szLogBuffer);
+		}
+	}
+}
+
+
+void WASMIF::setLvar(const char* lvarName, unsigned short value) {
+	int id = getLvarIdFromName(lvarName);
+
+	if (id < 0) {
+		char szLogBuffer[256];
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %s=%hu (No lvar with that name found)", lvarName, value);
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
+
+	DWORD param;
+	BYTE* p = (BYTE*)&param;
+
+	memcpy(p, &id, 2);
+	memcpy(p + 2, &value, 2);
+	setLvar(param);
+}
 
 void WASMIF::setLvar(DWORD param) {
 	char szLogBuffer[256];
