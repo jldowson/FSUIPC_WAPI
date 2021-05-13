@@ -20,6 +20,7 @@ enum WASM_EVENT_ID {
 	EVENT_UPDATE_CDAS,		// map to StartEventNo + 3
 	EVENT_LIST_LVARS,		// map to StartEventNo + 4
 	EVENT_RELOAD,			// map to StartEventNo + 5
+	EVENT_SET_LVARS,		// map to StartEventNo + 6
 	EVENT_CONFIG_RECEIVED=9,
 	EVENT_VALUES_RECEIVED=10, // Allow for MAX_NO_VALUE_CDAS (2)
 	EVENT_LVARS_RECEIVED=12, // Allow for MAX_NO_LVAR_CDAS (12)
@@ -96,6 +97,7 @@ class WASMIF
 		void SimConnectEnd();
 		const char* getEventString(int eventNo);
 		void setLvar(DWORD param);
+		void setLvarS(DWORD param);
 
 	private:
 		static WASMIF* m_Instance;

@@ -15,11 +15,12 @@
 
  // Define the default value where our events start. From this:
  //    0 = Get Config Data (provided but shouldn't be needed)
- //   +1 = Set LVAR (short values): parameter contains LVAR ID in low word and encoded value in hi word
+ //   +1 = Set LVAR (unsigned short values): parameter contains LVAR ID in low word and encoded value in hi word
  //   +2 = Set HVAR: parameter contains ID of CDA that holds the lvar in the low word, and the hvar index number in the hi word
  //   +3 = Request to Update LVARS: ignored if WASM is updating internally.
  //   +4 = Request to List LVARS (generates aircraft LVAR file)
  //   +5 = Reload Control: scans for lvars and re-reads hvar files and drops and re-creates all CDAs accordingly
+//    +6 = Set LVAR (signed short values): parameter contains LVAR ID in low word and encoded value in hi word
  // Note that it should be possible to change this value (via an ini parameter)
  // in both the WASM module and any clients. They must, of course, match.
 #define EVENT_START_NO			0x1FFF0

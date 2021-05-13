@@ -91,6 +91,7 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_UPDATE_CDAS, getEventString(EVENT_UPDATE_CDAS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_LIST_LVARS, getEventString(EVENT_LIST_LVARS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_RELOAD, getEventString(EVENT_RELOAD));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARS, getEventString(EVENT_SET_LVARS));
 
 	hr = SimConnect_SetNotificationGroupPriority(hSimConnect, 1, SIMCONNECT_GROUP_PRIORITY_HIGHEST);
 
@@ -752,16 +753,6 @@ void WASMIF::getLvarValues(map<string, double >& returnMap) {
 	LeaveCriticalSection(&lvarMutex);
 }
 
-void WASMIF::setLvar(unsigned short id, unsigned short value) {
-
-	DWORD param;
-	BYTE* p = (BYTE*)&param;
-
-	memcpy(p, &id, 2);
-	memcpy(p + 2, &value, 2);
-	setLvar(param);
-}
-
 
 void WASMIF::setLvar(unsigned short id, const char* value) {
 	char szLogBuffer[512];
@@ -790,7 +781,7 @@ void WASMIF::setLvar(unsigned short id, const char* value) {
 			else if (converted > -32769 && converted < 32768) {
 				short value = (short)converted;
 				setLvar(id, value);
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as short: %u", value);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as short: %d", value);
 				LOG_DEBUG(szLogBuffer);
 			}
 		}
@@ -822,6 +813,16 @@ void WASMIF::setLvar(unsigned short id, double value) {
 
 
 void WASMIF::setLvar(unsigned short id, short value) {
+	DWORD param;
+	BYTE* p = (BYTE*)&param;
+
+	memcpy(p, &id, 2);
+	memcpy(p + 2, &value, 2);
+	setLvarS(param);
+}
+
+void WASMIF::setLvar(unsigned short id, unsigned short value) {
+
 	DWORD param;
 	BYTE* p = (BYTE*)&param;
 
@@ -891,6 +892,21 @@ void WASMIF::setLvar(DWORD param) {
 		unsigned short value = static_cast<unsigned short>(param >> (2 * 8));
 		unsigned short id = static_cast<unsigned short>(param % (1 << (2 * 8)));
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Control sent to set lvars with parameter %d (%X): lvarId=%u (%X), value=%u (%X)", param, param,
+			id, id, value, value);
+		LOG_DEBUG(szLogBuffer);
+	}
+
+}
+void WASMIF::setLvarS(DWORD param) {
+	char szLogBuffer[256];
+	if (!SUCCEEDED(SimConnect_TransmitClientEvent(hSimConnect, SIMCONNECT_SIMOBJECT_TYPE_USER, EVENT_SET_LVARS, param, SIMCONNECT_GROUP_PRIORITY_HIGHEST, SIMCONNECT_EVENT_FLAG_GROUPID_IS_PRIORITY)))
+	{
+		LOG_ERROR("SimConnect_TransmitClientEvent for EVENT_SET_LVARS failed!!!!");
+	}
+	else {
+		unsigned short value = static_cast<short>(param >> (2 * 8));
+		unsigned short id = static_cast<unsigned short>(param % (1 << (2 * 8)));
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Control sent to set lvars with parameter %d (%X): lvarId=%u (%X), value=%d (%X)", param, param,
 			id, id, value, value);
 		LOG_DEBUG(szLogBuffer);
 	}
