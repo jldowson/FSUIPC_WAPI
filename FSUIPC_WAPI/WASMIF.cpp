@@ -300,6 +300,7 @@ void CALLBACK WASMIF::MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void*
 
 void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 	char szLogBuffer[256];
+	static int noLvarCDAsReceived = 0;
 
 	switch (pData->dwID)
 	{
@@ -324,6 +325,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			// Clear current lvar/hvar names and lvar values - these will be rebuilt when we receive the data
 			hvarNames.clear();
 			lvarNames.clear();
+			lvarFlaggedForCallback.clear();
 			EnterCriticalSection(&lvarMutex);
 			lvarValues.clear();
 			LeaveCriticalSection(&lvarMutex);
@@ -470,6 +472,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 			else
 				LOG_TRACE("Config data updates requested.");
+			// Reset lvars received counter
+			noLvarCDAsReceived = 0;
 			break;
 		}
 		case EVENT_LVARS_RECEIVED: // Allow for 14 distinct lvar CDAs
@@ -490,6 +494,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 					pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_DEBUG(szLogBuffer);
+			noLvarCDAsReceived++;
 			CDAName* lvars = (CDAName*)&(pObjData->dwData);
 			// Find id of CDA
 			int cdaId = 0;
@@ -507,11 +512,16 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					EnterCriticalSection(&lvarMutex);
 					lvarValues.push_back(0.0);
 					LeaveCriticalSection(&lvarMutex);
+					lvarFlaggedForCallback.push_back(FALSE);
 				}
 			}
 			else {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error: CDA with id=%d not found", pObjData->dwObjectID);
 				LOG_ERROR(szLogBuffer);
+			}
+			if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL) {
+				// All lvar names received - call CDA update callback if registered
+				cdaCbFunction();
 			}
 			break;
 		}
@@ -552,16 +562,41 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_TRACE(szLogBuffer);
-
+			vector<int> flaggedLvarIds;
+			vector<const char*> flaggedLvarNames;
+			vector<double> flaggedLvarValues;
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
 			EnterCriticalSection(&lvarMutex);
 			for (int i = 0; i < value_cda[0]->getNoItems() && i < lvarNames.size(); i++)
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%f", i, values[i].value);
 				LOG_TRACE(szLogBuffer);
+				if (lvarValues.at(i) != values[i].value && lvarFlaggedForCallback.at(i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
+					sprintf(szLogBuffer, "Flagging lvar for callback: id=%d", i);
+					LOG_DEBUG(szLogBuffer);
+					flaggedLvarIds.push_back(i);
+					flaggedLvarValues.push_back(values[i].value);
+					flaggedLvarNames.push_back(lvarNames.at(i).c_str());
+				}
 				lvarValues.at(i) = values[i].value;
 			}
  			LeaveCriticalSection(&lvarMutex);
+			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
+				// Add a terminating element
+				flaggedLvarIds.push_back(-1);
+				flaggedLvarValues.push_back(-1.0);
+				lvarCbFunctionId(&flaggedLvarIds[0], &flaggedLvarValues[0]);
+			}
+			if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
+				// Add a terminating element
+				flaggedLvarNames.push_back(NULL);
+				if (lvarCbFunctionId == NULL) {
+					// Add a terminating value element
+					flaggedLvarValues.push_back(-1.0);
+				}
+				lvarCbFunctionName((const char**)&flaggedLvarNames[0], &flaggedLvarValues[0]);
+
+			}
 			break;
 		}
 		case EVENT_VALUES_RECEIVED + 1:
@@ -577,6 +612,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_TRACE(szLogBuffer);
+			vector<int> flaggedLvarIds;
+			vector<const char*> flaggedLvarNames;
+			vector<double> flaggedLvarValues;
 
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
 			EnterCriticalSection(&lvarMutex);
@@ -584,9 +622,31 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%f", i+1024, values[i].value);
 				LOG_TRACE(szLogBuffer);
-				lvarValues.at(1024+i) = values[i].value;
+				if (lvarValues.at(1024 + i) != values[i].value && lvarFlaggedForCallback.at(1024 + i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
+					sprintf(szLogBuffer, "Flagging lvar for callback: id=%d", 1024+i);
+					LOG_DEBUG(szLogBuffer);
+					flaggedLvarIds.push_back(1024 + i);
+					flaggedLvarValues.push_back(values[1024 + i].value);
+					flaggedLvarNames.push_back(lvarNames.at(1024 + i).c_str());
+				}
+				lvarValues.at(1024 + i) = values[i].value;
 			}
 			LeaveCriticalSection(&lvarMutex);
+			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
+				// Add a terminating element
+				flaggedLvarIds.push_back(-1);
+				flaggedLvarValues.push_back(-1.0);
+				lvarCbFunctionId(&flaggedLvarIds[0], &flaggedLvarValues[0]);
+			}
+			else if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
+				if (lvarCbFunctionId == NULL) {
+					// Add a terminating element
+					flaggedLvarNames.push_back(NULL);
+					flaggedLvarValues.push_back(-1.0);
+				}
+				lvarCbFunctionName((const char**)&flaggedLvarNames[0], &flaggedLvarValues[0]);
+
+			}
 			break;
 		}
 		case SIMCONNECT_RECV_ID_EXCEPTION: {
@@ -762,13 +822,6 @@ void WASMIF::setLvar(unsigned short id, double value) {
 
 
 void WASMIF::setLvar(unsigned short id, short value) {
-	BOOL isNegative = FALSE;
-
-	if (value < 0) {
-		value = -value;
-		isNegative = TRUE;
-	}
-
 	DWORD param;
 	BYTE* p = (BYTE*)&param;
 
@@ -946,3 +999,35 @@ bool WASMIF::createLvar(const char* lvarName, DWORD value) {
 	executeCalclatorCode(ccode);
 	return TRUE;
 }
+
+void  WASMIF::registerUpdateCallback(void (*callbackFunction)(void)) {
+	cdaCbFunction = callbackFunction;
+}
+void  WASMIF::registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[])) {
+	lvarCbFunctionId = callbackFunction;
+}
+void  WASMIF::registerLvarUpdateCallback(void (*callbackFunction)(const char* lvarName[], double newValue[])) {
+	lvarCbFunctionName = callbackFunction;
+}
+void  WASMIF::flagLvarForUpdateCallback(int lvarId) {
+	if (lvarId < 0) { // Flag all lvars for update
+		for (int i = 0; i < lvarFlaggedForCallback.size(); i++)
+			lvarFlaggedForCallback.at(i) = TRUE;
+	}
+	else if (lvarId >= 0 && lvarId < lvarFlaggedForCallback.size())
+		lvarFlaggedForCallback.at(lvarId) = TRUE;
+}
+
+void  WASMIF::flagLvarForUpdateCallback(const char* lvarName) {
+	int id = getLvarIdFromName(lvarName);
+
+	if (id < 0) {
+		char szLogBuffer[256];
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error flagging lvar for update callback: %s (No lvar with that name found)", lvarName);
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
+	flagLvarForUpdateCallback(id);
+}
+
+bool  WASMIF::isRunning() { return hSimConnect!= NULL; }

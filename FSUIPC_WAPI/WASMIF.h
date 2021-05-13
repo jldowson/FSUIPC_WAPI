@@ -42,6 +42,7 @@ class WASMIF
 		static class WASMIF* GetInstance(HWND hWnd, int startEventNo = EVENT_START_NO, void (*loggerFunction)(const char* logString) = nullptr);
 		static class WASMIF* GetInstance(HWND hWnd, void (*loggerFunction)(const char* logString));
 		bool start();
+		bool isRunning();
 		void end();
 		void createAircraftLvarFile();
 		void reload();
@@ -71,6 +72,11 @@ class WASMIF
 		int getHvarIdFromName(const char* hvarName);
 		void getHvarNameFromId(int id, char* name);
 		bool createLvar(const char* lvarName, DWORD value);
+		void registerUpdateCallback(void (*callbackFunction)(void));
+		void registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));
+		void registerLvarUpdateCallback(void (*callbackFunction)(const char* lvarName[], double newValue[]));
+		void flagLvarForUpdateCallback(int lvarId);
+		void flagLvarForUpdateCallback(const char* lvarName);
 
 	public:
 		static void CALLBACK MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);
@@ -105,9 +111,13 @@ class WASMIF
 		static int nextDefinitionID;
 		vector<string> lvarNames;
 		vector<double> lvarValues;
+		vector<bool> lvarFlaggedForCallback;
 		vector<string> hvarNames;
 		CDAIdBank* cdaIdBank;
 		int simConnection;
 		CRITICAL_SECTION        lvarMutex;
+		void (*cdaCbFunction)(void) = NULL;
+		void (*lvarCbFunctionId)(int id[], double newValue[]) = NULL;
+		void (*lvarCbFunctionName)(const char* lvarName[], double newValue[]) = NULL;
 };
 
