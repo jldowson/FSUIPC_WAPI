@@ -91,7 +91,7 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_UPDATE_CDAS, getEventString(EVENT_UPDATE_CDAS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_LIST_LVARS, getEventString(EVENT_LIST_LVARS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_RELOAD, getEventString(EVENT_RELOAD));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARS, getEventString(EVENT_SET_LVARS));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARU, getEventString(EVENT_SET_LVARU));
 
 	hr = SimConnect_SetNotificationGroupPriority(hSimConnect, 1, SIMCONNECT_GROUP_PRIORITY_HIGHEST);
 
@@ -818,7 +818,7 @@ void WASMIF::setLvar(unsigned short id, short value) {
 
 	memcpy(p, &id, 2);
 	memcpy(p + 2, &value, 2);
-	setLvarS(param);
+	setLvarU(param);
 }
 
 void WASMIF::setLvar(unsigned short id, unsigned short value) {
@@ -897,9 +897,9 @@ void WASMIF::setLvar(DWORD param) {
 	}
 
 }
-void WASMIF::setLvarS(DWORD param) {
+void WASMIF::setLvarU(DWORD param) {
 	char szLogBuffer[256];
-	if (!SUCCEEDED(SimConnect_TransmitClientEvent(hSimConnect, SIMCONNECT_SIMOBJECT_TYPE_USER, EVENT_SET_LVARS, param, SIMCONNECT_GROUP_PRIORITY_HIGHEST, SIMCONNECT_EVENT_FLAG_GROUPID_IS_PRIORITY)))
+	if (!SUCCEEDED(SimConnect_TransmitClientEvent(hSimConnect, SIMCONNECT_SIMOBJECT_TYPE_USER, EVENT_SET_LVARU, param, SIMCONNECT_GROUP_PRIORITY_HIGHEST, SIMCONNECT_EVENT_FLAG_GROUPID_IS_PRIORITY)))
 	{
 		LOG_ERROR("SimConnect_TransmitClientEvent for EVENT_SET_LVARS failed!!!!");
 	}
