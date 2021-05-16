@@ -586,7 +586,6 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				lvarCbFunctionId(&flaggedLvarIds[0], &flaggedLvarValues[0]);
 			}
 			if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
-				}
 				lvarCbFunctionName((const char**)&flaggedLvarNames[0], &flaggedLvarValues[0]);
 
 			}
