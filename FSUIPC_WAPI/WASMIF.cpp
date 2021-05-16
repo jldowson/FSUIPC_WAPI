@@ -583,17 +583,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
  			LeaveCriticalSection(&lvarMutex);
 			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
-				// Add a terminating element
-				flaggedLvarIds.push_back(-1);
-				flaggedLvarValues.push_back(-1.0);
 				lvarCbFunctionId(&flaggedLvarIds[0], &flaggedLvarValues[0]);
 			}
 			if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
-				// Add a terminating element
-				flaggedLvarNames.push_back(NULL);
-				if (lvarCbFunctionId == NULL) {
-					// Add a terminating value element
-					flaggedLvarValues.push_back(-1.0);
 				}
 				lvarCbFunctionName((const char**)&flaggedLvarNames[0], &flaggedLvarValues[0]);
 
