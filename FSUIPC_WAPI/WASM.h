@@ -3,6 +3,7 @@
  * Main WASM Interface. This is the file that is shared
  * between the WASM module and the Client.
  */
+#define WASM_VERSION			"0.5.0"
 #define MAX_VAR_NAME_SIZE		56 // Max size of a CDA is 8k. So Max no lvars per CDK is 8192/(this valuw) = 146
 #define MAX_CDA_NAME_SIZE		64 
 #define MAX_NO_VALUE_CDAS		2 // Allows for 2*1024 lvars 
@@ -54,6 +55,7 @@ namespace WASM {
 
 	typedef struct _CONFIG_CDA
 	{
+		char version[8];
 		char CDA_Names[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS][MAX_CDA_NAME_SIZE];
 		int CDA_Size[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS];
 		CDAType CDA_Type[MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS];

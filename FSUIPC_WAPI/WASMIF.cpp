@@ -194,6 +194,10 @@ bool WASMIF::start() {
 	}
 
 	quit = 0;
+	// Log WAPI version
+	sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Starting FSUIPC7 WASM Interface (WAPI) version %s", WAPI_VERSION);
+	LOG_INFO(szLogBuffer);
+
 	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, simConnection)))
 	{
 		LOG_INFO("Connected to MSFS");
@@ -372,6 +376,12 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			noHvarCDAs = 0;
 
 			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
+			// Check WASM version compatibility
+			if (strcmp(configData->version, WASM_VERSION) != 0) {
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Incompatible WASM version: The WASM version is %s while the WAPI version is %s. Cannot continue.", configData->version, WASM_VERSION);
+				LOG_ERROR(szLogBuffer);
+				break;
+			}
 
 			for (int i = 0; i < MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS; i++)
 			{
