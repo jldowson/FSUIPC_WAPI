@@ -376,12 +376,6 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			noHvarCDAs = 0;
 
 			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
-			// Check WASM version compatibility
-			if (strcmp(configData->version, WASM_VERSION) != 0) {
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Incompatible WASM version: The WASM version is %s while the WAPI version is %s. Cannot continue.", configData->version, WASM_VERSION);
-				LOG_ERROR(szLogBuffer);
-				break;
-			}
 
 			for (int i = 0; i < MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS; i++)
 			{
@@ -395,6 +389,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			if (!(noLvarCDAs + noHvarCDAs)) {
 				LOG_TRACE("Empty config data received - requesting again");
 				configTimer = SetTimer(hWnd, UINT_PTR(this), 500, &WASMIF::StaticConfigTimer);
+				break;
+			}
+
+			// Check WASM version compatibility
+			if (strcmp(configData->version, WASM_VERSION) != 0) {
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Incompatible WASM version: The WASM version is %s while the WAPI version is %s. Cannot continue.", configData->version, WASM_VERSION);
+				LOG_ERROR(szLogBuffer);
 				break;
 			}
 
