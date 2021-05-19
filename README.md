@@ -23,7 +23,7 @@ You can register for a callback function to be called when the lvars/hvars have 
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void registerUpdateCallback(void (*callbackFunction)(void));</code><br>
 
 You can also register for a callback to be received when lvars have been updated, and flag individual lvars to be added to this callback, using the following functions:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<code>registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void (*callbackFunction)(const char* lvarName[], double newValue[]));</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void flagLvarForUpdateCallback(int lvarId);</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void flagLvarForUpdateCallback(const char* lvarName);</code><br>
