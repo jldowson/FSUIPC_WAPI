@@ -20,7 +20,7 @@ You can then get/set/list lvars and list/activate hvars using the provided membe
 &nbsp;&nbsp;&nbsp;&nbsp;              etc<br>
 
 You can register for a callback function to be called when the lvars/hvars have been loaded and are available using the following function:
-&nbsp;&nbsp;&nbsp;&nbsp;<code>        void registerUpdateCallback(void (*callbackFunction)(void));</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<code>        void registerUpdateCallback(void (*callbackFunction)(void));</code><br>
 
 You can also register for a callback to be received when lvars have been updated, and flag individual lvars to be added to this callback, using the following functions:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>        registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));</code><br>
