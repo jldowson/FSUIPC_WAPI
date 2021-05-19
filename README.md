@@ -5,7 +5,7 @@ FSUIPC_WAPI is a client-side API library for communication with the FSUIPC WASM 
 This allows for the retrieval/listing of lbars/hvars, for the setting of lvars and the activation of hvars.
 
 The WASMIF class is the main interface. To use, first instantiate a WASMIF object:<br>
-<code>        WASMIF* WASMIFPtr = WASMIF::getInstance(hWnd);</code><br>
+nbsp;nbsp;nbsp;nbsp;<code>        WASMIF* WASMIFPtr = WASMIF::getInstance(hWnd);</code><br>
 
 Then start the service:<br>
 <code>        WASMIFPtr->start();</code><br>
@@ -22,7 +22,7 @@ You can then get/set/list lvars and list/activate hvars using the provided membe
 You can register for a callback function to be called when the lvars/hvars have been loaded and are available using the following function:
 <code>        void registerUpdateCallback(void (*callbackFunction)(void));</code><br>
 
-You can also register for a callback to be received when lvars have been updated, and flag individual lvars to be added to this callback, using the following functions:
+You can also register for a callback to be received when lvars have been updated, and flag individual lvars to be added to this callback, using the following functions:<br>
 <code>        registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));</code><br>
 <code>        void registerLvarUpdateCallback(void (*callbackFunction)(const char* lvarName[], double newValue[]));</code><br>
 <code>        void flagLvarForUpdateCallback(int lvarId);</code><br>
