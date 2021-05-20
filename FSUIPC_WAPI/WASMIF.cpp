@@ -1059,12 +1059,12 @@ void WASMIF::getHvarNameFromId(int id, char* name) {
 	else name[0] = 0;
 }
 
-bool WASMIF::createLvar(const char* lvarName, DWORD value) {
+bool WASMIF::createLvar(const char* lvarName, double value) {
 	if (strlen(lvarName) > MAX_VAR_NAME_SIZE)
 		return FALSE;
 
 	char ccode[MAX_CALC_CODE_SIZE];
-	sprintf_s(ccode, sizeof(ccode), "::%s = %X", lvarName, value);
+	sprintf_s(ccode, sizeof(ccode), "::%s = %lf", lvarName, value);
 	executeCalclatorCode(ccode);
 	return TRUE;
 }
