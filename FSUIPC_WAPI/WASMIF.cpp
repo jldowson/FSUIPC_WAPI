@@ -928,6 +928,14 @@ void WASMIF::executeCalclatorCode(const char* code) {
 	char szLogBuffer[MAX_CALC_CODE_SIZE + 64];
 	DWORD dwLastID;
 	CDACALCCODE ccode;
+
+	// First, check size of provided code
+	if (code == NULL || strlen(code) > MAX_CALC_CODE_SIZE - 1) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code: code contains %d characters, max allowed is %d",
+			code == NULL ? 0 : strlen(code), MAX_CALC_CODE_SIZE - 1);
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
 	strncpy_s(ccode.calcCode, sizeof(ccode.calcCode), code, MAX_CALC_CODE_SIZE);
 	ccode.calcCode[MAX_CALC_CODE_SIZE - 1] = '\0';
 	if (!SUCCEEDED(SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode))) {
@@ -964,6 +972,26 @@ void WASMIF::getLvarList(unordered_map<int, string >& returnMap) {
 
 void WASMIF::setHvar(int id) {
 	char szLogBuffer[256];
+	if (!SUCCEEDED(SimConnect_TransmitClientEvent(hSimConnect, SIMCONNECT_SIMOBJECT_TYPE_USER, EVENT_SET_HVAR, id, SIMCONNECT_GROUP_PRIORITY_HIGHEST, SIMCONNECT_EVENT_FLAG_GROUPID_IS_PRIORITY)))
+	{
+		LOG_ERROR("SimConnect_TransmitClientEvent for EVENT_SET_HVAR failed!!!!");
+	}
+	else {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Control sent to set hvar with id=%d (%X)", id, id);
+		LOG_DEBUG(szLogBuffer);
+	}
+}
+
+void WASMIF::setHvar(const char* hvarName) {
+	char szLogBuffer[256];
+	int id = getHvarIdFromName(hvarName);
+
+	if (id < 0) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error activating hvar '%s': No hvar with that name found");
+		LOG_ERROR(szLogBuffer);
+		return;
+	}
+
 	if (!SUCCEEDED(SimConnect_TransmitClientEvent(hSimConnect, SIMCONNECT_SIMOBJECT_TYPE_USER, EVENT_SET_HVAR, id, SIMCONNECT_GROUP_PRIORITY_HIGHEST, SIMCONNECT_EVENT_FLAG_GROUPID_IS_PRIORITY)))
 	{
 		LOG_ERROR("SimConnect_TransmitClientEvent for EVENT_SET_HVAR failed!!!!");
