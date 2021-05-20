@@ -152,19 +152,7 @@ void Logger::logOnConsole(std::string& data)
 
 string Logger::getCurrentTime()
 {
-/***
-//    unsigned long ulTime = GetTickCount();
-   string currTime;
-   //Current date/time based on current time
-   time_t now = time(0); 
-   // Convert current time to string
-   currTime.assign(ctime(&now));
-
-   // Last charactor of currentTime is "\n", so remove it
-   string currentTime = currTime.substr(0, currTime.size()-1);
-   return currentTime;
-***/
-// get a precise timestamp as a string
+   // get a precise timestamp as a string
     const auto now = std::chrono::system_clock::now();
     const auto nowAsTimeT = std::chrono::system_clock::to_time_t(now);
     const auto nowMs = (std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch())).count() % 1000;

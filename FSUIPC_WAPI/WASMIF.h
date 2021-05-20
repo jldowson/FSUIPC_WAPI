@@ -17,16 +17,18 @@ using namespace CDAIdBankMSFS;
 using namespace std;
 
 enum WASM_EVENT_ID {
+	// Events we send
 	EVENT_SET_LVAR=1,		// map to StartEventNo + 1, used to set unsigned shorts via SimConnect
 	EVENT_SET_HVAR,			// map to StartEventNo + 2, used to activat a hvar via SimConnect
 	EVENT_UPDATE_CDAS,		// map to StartEventNo + 3, used to request an lvar values update
-	EVENT_LIST_LVARS,		// map to StartEventNo + 4, used to generate lvar files
+	EVENT_LIST_LVARS,		// map to StartEventNo + 4, used to generate lvar files. Depracated
 	EVENT_RELOAD,			// map to StartEventNo + 5, used to reload lvars/hvars and re-create the CDAs
 	EVENT_SET_LVARS,		// map to StartEventNo + 6, used to set signed shorts via SimConnect
-	EVENT_CONFIG_RECEIVED=9,
-	EVENT_VALUES_RECEIVED=10, // Allow for MAX_NO_VALUE_CDAS (2)
-	EVENT_LVARS_RECEIVED=12, // Allow for MAX_NO_LVAR_CDAS (12)
-	EVENT_HVARS_RECEIVED=30, // Allow for MAX_NO_HVAR_CDAS (4)
+	// Events we receive
+	EVENT_CONFIG_RECEIVED=9,  // Config data received from the WASM, giving details of CDAs and sizes required
+	EVENT_VALUES_RECEIVED=10, // Start event number of events received when an lvar value CDA have been updated. Allow for MAX_NO_VALUE_CDAS (2)
+	EVENT_LVARS_RECEIVED=12, // Start event number of events received when an lvar name CDA have been updated. Allow for MAX_NO_LVAR_CDAS (12)
+	EVENT_HVARS_RECEIVED=30, // Start event number of events received when an hvar name CDA have been updated. Allow for MAX_NO_HVAR_CDAS (4)
 };
 
 enum LOGLEVEL
