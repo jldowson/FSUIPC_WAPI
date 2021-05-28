@@ -961,6 +961,9 @@ void WASMIF::executeCalclatorCode(const char* code) {
 		SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calcultor Code Client Data Area updated [requestID=%d]", dwLastID);
 		LOG_TRACE(szLogBuffer);
+		// Now send an empty request. This is needed to clear the CDA in case the same calc code is resent
+		strcpy(ccode.calcCode, "1");
+		SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode);
 	}
 }
 
