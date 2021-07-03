@@ -833,6 +833,10 @@ void WASMIF::setLvar(unsigned short id, double value) {
 		SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar set Client Data Area updated [requestID=%d]", dwLastID);
 		LOG_TRACE(szLogBuffer);
+		// Now send an empty request. This is needed to clear the CDA in case the same lvar value is resent
+		lvar.id = -1;
+		lvar.lvarValue = 0;
+		SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar);
 	}
 }
 
