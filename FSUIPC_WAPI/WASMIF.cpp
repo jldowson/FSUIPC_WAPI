@@ -332,7 +332,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 		case EVENT_CONFIG_RECEIVED:
 		{
-			LOG_DEBUG("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
+			LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
 			if (configTimer) {
 				KillTimer(hWnd, configTimer);
 				configTimer = 0;
