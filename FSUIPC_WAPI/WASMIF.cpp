@@ -210,7 +210,7 @@ bool WASMIF::start() {
 
 	quit = 0;
 	// Log WAPI version
-	sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Starting FSUIPC7 WASM Interface (WAPI) version %s", WAPI_VERSION);
+	sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Starting FSUIPC7 WASM Interface (WAPI) version %s (WASM version %s)", WAPI_VERSION, WASM_VERSION);
 	LOG_INFO(szLogBuffer);
 
 	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, simConnection)))
@@ -596,7 +596,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			EnterCriticalSection(&lvarMutex);
 			for (int i = 0; i < value_cda[0]->getNoItems() && i < lvarNames.size(); i++)
 			{
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%f", i, values[i].value);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i, values[i].value);
 				LOG_TRACE(szLogBuffer);
 				if (lvarValues.at(i) != values[i].value && lvarFlaggedForCallback.at(i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
 					sprintf(szLogBuffer, "Flagging lvar for callback: id=%d", i);
@@ -612,7 +612,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				// Add a terminating element
 				flaggedLvarIds.push_back(-1);
 				flaggedLvarValues.push_back(-1.0);
-				lvarCbFunctionId(&flaggedLvarIds[0], &flaggedLvarValues[0]);
+				lvarCbFunctionId(flaggedLvarIds.data(), flaggedLvarValues.data());
 			}
 			if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
 				// Add a terminating element
@@ -621,7 +621,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					// Add a terminating value element
 					flaggedLvarValues.push_back(-1.0);
 				}
-				lvarCbFunctionName((const char**)&flaggedLvarNames[0], &flaggedLvarValues[0]);
+				lvarCbFunctionName(flaggedLvarNames.data(), flaggedLvarValues.data());
 			}
 			break;
 		}
@@ -646,13 +646,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			EnterCriticalSection(&lvarMutex);
 			for (int i = 0; i < value_cda[1]->getNoItems() && i+1024 < lvarNames.size(); i++)
 			{
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%f", i+1024, values[i].value);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i+1024, values[i].value);
 				LOG_TRACE(szLogBuffer);
 				if (lvarValues.at(1024 + i) != values[i].value && lvarFlaggedForCallback.at(1024 + i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
 					sprintf(szLogBuffer, "Flagging lvar for callback: id=%d", 1024+i);
 					LOG_DEBUG(szLogBuffer);
 					flaggedLvarIds.push_back(1024 + i);
-					flaggedLvarValues.push_back(values[1024 + i].value);
+					flaggedLvarValues.push_back(values[i].value);
 					flaggedLvarNames.push_back(lvarNames.at(1024 + i).c_str());
 				}
 				lvarValues.at(1024 + i) = values[i].value;
@@ -662,15 +662,15 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				// Add a terminating element
 				flaggedLvarIds.push_back(-1);
 				flaggedLvarValues.push_back(-1.0);
-				lvarCbFunctionId(&flaggedLvarIds[0], &flaggedLvarValues[0]);
+				lvarCbFunctionId(flaggedLvarIds.data(), flaggedLvarValues.data());
 			}
 			else if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
+				// Add a terminating element
+				flaggedLvarNames.push_back(NULL);
 				if (lvarCbFunctionId == NULL) {
-					// Add a terminating element
-					flaggedLvarNames.push_back(NULL);
 					flaggedLvarValues.push_back(-1.0);
 				}
-				lvarCbFunctionName((const char**)&flaggedLvarNames[0], &flaggedLvarValues[0]);
+				lvarCbFunctionName(flaggedLvarNames.data(), flaggedLvarValues.data());
 
 			}
 			break;
