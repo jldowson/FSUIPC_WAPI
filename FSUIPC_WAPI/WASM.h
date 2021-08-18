@@ -3,11 +3,11 @@
  * Main WASM Interface. This is the file that is shared
  * between the WASM module and the Client.
  */
-#define WASM_VERSION			"0.5.2"
+#define WASM_VERSION			"0.5.3"
 #define MAX_VAR_NAME_SIZE		56 // Max size of a CDA is 8k. So Max no lvars per CDK is 8192/(this valuw) = 146
 #define MAX_CDA_NAME_SIZE		64 
 #define MAX_NO_VALUE_CDAS		2 // Allows for 2*1024 lvars 
-#define MAX_NO_LVAR_CDAS		12 // Allows for 1752 lvars (12*(8k/56)): 14 is max and allows for 2044 lvars - the max allowd for the 2 value areas (8k/8) is 2048
+#define MAX_NO_LVAR_CDAS		14 // Allows for 1752 lvars (12*(8k/56)): 14 is max and allows for 2044 lvars - the max allowd for the 2 value areas (8k/8) is 2048
 #define MAX_NO_HVAR_CDAS		4 // We can have more of these if needed
 #define CONFIG_CDA_NAME			"FSUIPC_config"
 #define LVARVALUE_CDA_NAME		"FSUIPC_SetLvar"
