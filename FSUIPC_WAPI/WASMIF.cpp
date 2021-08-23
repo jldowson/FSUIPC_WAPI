@@ -29,7 +29,7 @@ Logger* pLogger = nullptr;
 
 
 WASMIF::WASMIF() {
-	hSimConnect = 0;
+	hSimConnect = NULL;
 	configTimer = 0;
 	quit = 0;
 	configReceived = FALSE;
@@ -1106,4 +1106,4 @@ void  WASMIF::flagLvarForUpdateCallback(const char* lvarName) {
 	flagLvarForUpdateCallback(id);
 }
 
-bool  WASMIF::isRunning() { return hSimConnect!= NULL; }
+bool  WASMIF::isRunning() { return hSimConnect != NULL; }
