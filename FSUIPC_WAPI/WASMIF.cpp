@@ -950,8 +950,8 @@ void WASMIF::executeCalclatorCode(const char* code) {
 
 	// First, check size of provided code
 	if (code == NULL || strlen(code) > MAX_CALC_CODE_SIZE - 1) {
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code: code contains %d characters, max allowed is %d",
-			code == NULL ? 0 : strlen(code), MAX_CALC_CODE_SIZE - 1);
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code: code contains %zd characters, max allowed is %d",
+			code == NULL ? (size_t)0 : strlen(code), MAX_CALC_CODE_SIZE - 1);
 		LOG_ERROR(szLogBuffer);
 		return;
 	}
@@ -1009,7 +1009,7 @@ void WASMIF::setHvar(const char* hvarName) {
 	int id = getHvarIdFromName(hvarName);
 
 	if (id < 0) {
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error activating hvar '%s': No hvar with that name found");
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error activating hvar '%s': No hvar with that name found", hvarName);
 		LOG_ERROR(szLogBuffer);
 		return;
 	}
