@@ -237,6 +237,7 @@ bool WASMIF::start() {
 	else {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Failed on SimConnect Open: cannot connect: %s", hr == E_INVALIDARG ? "E_INVALIDARG":"E_FAIL");
 		LOG_ERROR(szLogBuffer);
+		hSimConnect = NULL;
 	}
 
 	return FALSE;
