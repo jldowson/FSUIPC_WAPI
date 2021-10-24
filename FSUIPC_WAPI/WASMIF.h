@@ -9,7 +9,7 @@
 #include "ClientDataArea.h"
 #include "CDAIdBank.h"
 
-#define WAPI_VERSION			"0.5.4"
+#define WAPI_VERSION			"0.5.5"
 
 using namespace ClientDataAreaMSFS;
 using namespace CDAIdBankMSFS;
@@ -98,7 +98,6 @@ class WASMIF
 		int quit, noLvarCDAs, noHvarCDAs, startEventNo, lvarUpdateFrequency;
 		UINT_PTR configTimer;
 		UINT_PTR requestTimer;
-		BOOL configReceived;
 		ClientDataArea* lvar_cdas[MAX_NO_LVAR_CDAS];
 		ClientDataArea* hvar_cdas[MAX_NO_HVAR_CDAS];
 		ClientDataArea* value_cda[MAX_NO_VALUE_CDAS];

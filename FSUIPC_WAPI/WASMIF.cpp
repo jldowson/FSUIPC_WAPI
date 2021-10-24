@@ -32,7 +32,6 @@ WASMIF::WASMIF() {
 	hSimConnect = NULL;
 	configTimer = 0;
 	quit = 0;
-	configReceived = FALSE;
 	noLvarCDAs = 0;
 	noHvarCDAs = 0;
 	lvarUpdateFrequency = 0;
@@ -99,6 +98,7 @@ const char* WASMIF::getEventString(int eventNo) {
 DWORD WINAPI WASMIF::SimConnectStart() {
 	HRESULT hr;
 	int CDAId = 1;
+	nextDefinitionID = 1;
 
 //	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_GET_CONFIG, getEventString(EVENT_GET_CONFIG));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVAR, getEventString(EVENT_SET_LVAR));
@@ -232,6 +232,9 @@ bool WASMIF::start() {
 				return FALSE;
 			}
 		}
+		else {
+			LOG_ERROR("**** SimConnect thread already running ****");
+		}
 		return TRUE;
 	}
 	else {
@@ -302,6 +305,11 @@ void WASMIF::SimConnectEnd() {
 	}
 	noHvarCDAs = 0;
 	delete cdaIdBank;
+	if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, 1)))
+	{
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing config data definition");
+		LOG_ERROR(szLogBuffer);
+	}
 
 	if (hSimConnect)
 	{
