@@ -35,7 +35,9 @@ WASMIF::WASMIF() {
 	noLvarCDAs = 0;
 	noHvarCDAs = 0;
 	lvarUpdateFrequency = 0;
-	InitializeCriticalSection(&lvarMutex);
+	InitializeCriticalSection(&lvarValuesMutex);
+	InitializeCriticalSection(&lvarNamesMutex);
+	InitializeCriticalSection(&hvarNamesMutex);
 	simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL; // = -1
 }
 
@@ -352,12 +354,16 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 
 			// Clear current lvar/hvar names and lvar values - these will be rebuilt when we receive the data
-			hvarNames.clear();
+			EnterCriticalSection(&lvarNamesMutex);
+			EnterCriticalSection(&hvarNamesMutex);
+			EnterCriticalSection(&lvarValuesMutex);
 			lvarNames.clear();
+			hvarNames.clear();
 			lvarFlaggedForCallback.clear();
-			EnterCriticalSection(&lvarMutex);
 			lvarValues.clear();
-			LeaveCriticalSection(&lvarMutex);
+			LeaveCriticalSection(&lvarValuesMutex);
+			LeaveCriticalSection(&hvarNamesMutex);
+			LeaveCriticalSection(&lvarNamesMutex);
 
 			// Drop existing CDAs
 			for (int i = 0; i < MAX_NO_VALUE_CDAS; i++) {
@@ -544,10 +550,12 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				{
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "LVAR Data: name='%s'", lvars[i].name);
 					LOG_TRACE(szLogBuffer);
+					EnterCriticalSection(&lvarNamesMutex);
+					EnterCriticalSection(&lvarValuesMutex);
 					lvarNames.push_back(string(lvars[i].name));
-					EnterCriticalSection(&lvarMutex);
 					lvarValues.push_back(0.0);
-					LeaveCriticalSection(&lvarMutex);
+					LeaveCriticalSection(&lvarValuesMutex);
+					LeaveCriticalSection(&lvarNamesMutex);
 					lvarFlaggedForCallback.push_back(FALSE);
 				}
 			}
@@ -572,6 +580,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			CDAName* hvars = (CDAName*)&(pObjData->dwData);
 			// Find id of CDA
 			int cdaId = 0;
+			EnterCriticalSection(&hvarNamesMutex);
 			for (cdaId = 0; cdaId < MAX_NO_HVAR_CDAS; cdaId++)
 			{
 				if (hvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
@@ -589,6 +598,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error: CDA with id=%d not found", pObjData->dwDefineID);
 				LOG_ERROR(szLogBuffer);
 			}
+			LeaveCriticalSection(&hvarNamesMutex);
 			break;
 		}
 		case EVENT_VALUES_RECEIVED:
@@ -602,7 +612,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			vector<const char*> flaggedLvarNames;
 			vector<double> flaggedLvarValues;
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
-			EnterCriticalSection(&lvarMutex);
+			EnterCriticalSection(&lvarNamesMutex);
+			EnterCriticalSection(&lvarValuesMutex);
 			for (int i = 0; i < value_cda[0]->getNoItems() && i < lvarNames.size(); i++)
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i, values[i].value);
@@ -616,7 +627,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				}
 				lvarValues.at(i) = values[i].value;
 			}
- 			LeaveCriticalSection(&lvarMutex);
+			LeaveCriticalSection(&lvarValuesMutex);
+			LeaveCriticalSection(&lvarNamesMutex);
 			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
 				// Add a terminating element
 				flaggedLvarIds.push_back(-1);
@@ -638,12 +650,14 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 			// Check values match definition
 			if (value_cda[1]->getDefinitionId() != pObjData->dwDefineID) break;
+			EnterCriticalSection(&lvarNamesMutex);
 			if (lvarNames.size() <= 1024) {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: Ignoring as we only have %llu lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
 					lvarNames.size(), pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 				LOG_DEBUG(szLogBuffer);
 				break;
 			}
+			LeaveCriticalSection(&lvarNamesMutex);
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+1: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_TRACE(szLogBuffer);
@@ -652,7 +666,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			vector<double> flaggedLvarValues;
 
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
-			EnterCriticalSection(&lvarMutex);
+			EnterCriticalSection(&lvarNamesMutex);
+			EnterCriticalSection(&lvarValuesMutex);
 			for (int i = 0; i < value_cda[1]->getNoItems() && i+1024 < lvarNames.size(); i++)
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i+1024, values[i].value);
@@ -666,7 +681,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				}
 				lvarValues.at(1024 + i) = values[i].value;
 			}
-			LeaveCriticalSection(&lvarMutex);
+			LeaveCriticalSection(&lvarValuesMutex);
+			LeaveCriticalSection(&lvarNamesMutex);
 			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
 				// Add a terminating element
 				flaggedLvarIds.push_back(-1);
@@ -757,10 +773,14 @@ int WASMIF::getLvarUpdateFrequency() {
 
 
 double WASMIF::getLvar(int lvarID) {
-	if (lvarID < 0 || lvarID >= lvarValues.size()) return NULL;
-	EnterCriticalSection(&lvarMutex);
+	EnterCriticalSection(&lvarValuesMutex);
+	if (lvarID < 0 || lvarID >= lvarValues.size())
+	{
+		LeaveCriticalSection(&lvarValuesMutex);
+		return NULL;
+	}
 	double result = lvarValues.at(lvarID);
-	LeaveCriticalSection(&lvarMutex);
+	LeaveCriticalSection(&lvarValuesMutex);
 
 	return result;
 }
@@ -768,23 +788,27 @@ double WASMIF::getLvar(int lvarID) {
 
 double WASMIF::getLvar(const char* lvarName) {
 	int lvarId;
+	EnterCriticalSection(&lvarNamesMutex);
+	EnterCriticalSection(&lvarValuesMutex);
 	for (lvarId = 0; lvarId < lvarNames.size(); lvarId++)
 		if (!strcmp(lvarName, lvarNames.at(lvarId).c_str())) break;
 
-	EnterCriticalSection(&lvarMutex);
 	double result = lvarId < lvarValues.size() ? lvarValues.at(lvarId) : 0.0;
-	LeaveCriticalSection(&lvarMutex);
+	LeaveCriticalSection(&lvarValuesMutex);
+	LeaveCriticalSection(&lvarNamesMutex);
 
 	return result;
 }
 
 void WASMIF::getLvarValues(map<string, double >& returnMap) {
 
-	EnterCriticalSection(&lvarMutex);
+	EnterCriticalSection(&lvarNamesMutex);
+	EnterCriticalSection(&lvarValuesMutex);
 	for (int lvarId = 0; lvarId < lvarNames.size(); lvarId++) {
 		returnMap.insert(make_pair(lvarNames.at(lvarId), lvarValues.at(lvarId)));
 	}
-	LeaveCriticalSection(&lvarMutex);
+	LeaveCriticalSection(&lvarValuesMutex);
+	LeaveCriticalSection(&lvarNamesMutex);
 }
 
 
@@ -983,21 +1007,25 @@ void WASMIF::executeCalclatorCode(const char* code) {
 
 void WASMIF::logLvars() {
 	char szLogBuffer[256];
+	EnterCriticalSection(&lvarNamesMutex);
+	EnterCriticalSection(&lvarValuesMutex);
 	sprintf(szLogBuffer, "We have %03llu lvars: ", lvarNames.size());
 	LOG_INFO(szLogBuffer);
-	EnterCriticalSection(&lvarMutex);
 	for (int i = 0; i < lvarNames.size(); i++) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "    ID=%03d %s = %f", i, lvarNames.at(i).c_str(), lvarValues.at(i));
 		LOG_INFO(szLogBuffer);
 	}
-	LeaveCriticalSection(&lvarMutex);
+	LeaveCriticalSection(&lvarValuesMutex);
+	LeaveCriticalSection(&lvarNamesMutex);
 }
 
 
 void WASMIF::getLvarList(unordered_map<int, string >& returnMap) {
+	EnterCriticalSection(&lvarNamesMutex);
 	for (int i = 0; i < lvarNames.size(); i++) {
 		returnMap.insert(make_pair(i, lvarNames.at(i)));
 	}
+	LeaveCriticalSection(&lvarNamesMutex);
 }
 
 
@@ -1036,43 +1064,63 @@ void WASMIF::setHvar(const char* hvarName) {
 
 void WASMIF::logHvars() {
 	char szLogBuffer[256];
+	EnterCriticalSection(&hvarNamesMutex);
 	for (int i = 0; i < hvarNames.size(); i++) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "ID=%03d %s", i, hvarNames.at(i).c_str());
 		LOG_INFO(szLogBuffer);
 	}
+	LeaveCriticalSection(&hvarNamesMutex);
 }
 
 
 void WASMIF::getHvarList(unordered_map<int, string >& returnMap) {
+	EnterCriticalSection(&hvarNamesMutex);
 	for (int i = 0; i < hvarNames.size(); i++) {
 		returnMap.insert(make_pair(i, hvarNames.at(i)));
 	}
+	LeaveCriticalSection(&hvarNamesMutex);
 }
 
 int WASMIF::getLvarIdFromName(const char* lvarName) {
+	EnterCriticalSection(&lvarNamesMutex);
 	for (int i = 0; i < lvarNames.size(); i++) {
-		if (lvarNames.at(i) == string(lvarName)) return i;
+		if (lvarNames.at(i) == string(lvarName))
+		{
+			LeaveCriticalSection(&lvarNamesMutex);
+			return i;
+		}
 	}
+	LeaveCriticalSection(&lvarNamesMutex);
 	return -1;
 }
 
 void WASMIF::getLvarNameFromId(int id, char* name) {
+	EnterCriticalSection(&lvarNamesMutex);
 	if (id >= 0 && id < lvarNames.size())
 		strcpy(name, lvarNames.at(id).c_str());
 	else name = NULL;
+	LeaveCriticalSection(&lvarNamesMutex);
 }
 
 int WASMIF::getHvarIdFromName(const char* hvarName) {
+	EnterCriticalSection(&hvarNamesMutex);
 	for (int i = 0; i < hvarNames.size(); i++) {
-		if (hvarNames.at(i) == string(hvarName)) return i;
+		if (hvarNames.at(i) == string(hvarName))
+		{
+			LeaveCriticalSection(&lvarNamesMutex);
+			return i;
+		}
 	}
+	LeaveCriticalSection(&hvarNamesMutex);
 	return -1;
 }
 
 void WASMIF::getHvarNameFromId(int id, char* name) {
+	EnterCriticalSection(&hvarNamesMutex);
 	if (id >= 0 && id < hvarNames.size())
 		strcpy(name, hvarNames.at(id).c_str());
 	else name[0] = 0;
+	LeaveCriticalSection(&hvarNamesMutex);
 }
 
 bool WASMIF::createLvar(const char* lvarName, double value) {
