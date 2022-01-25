@@ -424,9 +424,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			// Check WASM version compatibility
 			if (strcmp(configData->version, WASM_VERSION) != 0) {
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Incompatible WASM version: The WASM version is %s while the WAPI version is %s. Cannot continue.", configData->version, WASM_VERSION);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Different WASM version: The WASM version is %s while the WAPI version is %s. This may cause issues.", configData->version, WASM_VERSION);
 				LOG_ERROR(szLogBuffer);
-				break;
 			}
 
 			// For each config CDA, we need to set a CDA element and request
