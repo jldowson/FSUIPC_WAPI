@@ -3,7 +3,7 @@
  * Main WASM Interface. This is the file that is shared
  * between the WASM module and the Client.
  */
-#define WASM_VERSION			"0.5.6"
+#define WASM_VERSION			"0.5.7"
 #define MAX_VAR_NAME_SIZE		56 // Max size of a CDA is 8k. So Max no lvars per CDK is 8192/(this valuw) = 146
 #define MAX_CDA_NAME_SIZE		64 
 #define MAX_NO_VALUE_CDAS		2 // Allows for 2*1024 lvars 
@@ -12,7 +12,7 @@
 #define CONFIG_CDA_NAME			"FSUIPC_config"
 #define LVARVALUE_CDA_NAME		"FSUIPC_SetLvar"
 #define CCODE_CDA_NAME			"FSUIPC_CalcCode"
-#define MAX_CALC_CODE_SIZE		256 // Up to 8k
+#define MAX_CALC_CODE_SIZE		1024 // Up to 8k 
 
  // Define the default value where our events start. From this:
  //    0 = Get Config Data (provided but shouldn't be needed)
