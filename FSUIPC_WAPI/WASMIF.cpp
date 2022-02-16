@@ -424,7 +424,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			// Check WASM version compatibility
 			if (strcmp(configData->version, WASM_VERSION) != 0) {
-				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Different WASM version: The WASM version is %s while the WAPI version is %s. This may cause issues.", configData->version, WASM_VERSION);
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** The installed WASM version is %s while the WAPI is expecting WASM version %s. Please update the WASM module as this may cause issues.", configData->version, WASM_VERSION);
 				LOG_ERROR(szLogBuffer);
 			}
 
