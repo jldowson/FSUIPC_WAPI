@@ -827,8 +827,8 @@ void WASMIF::setLvar(unsigned short id, const char* value) {
 		// Check if we have an integer
 		int i, r, n;
 		r = sscanf_s(value, "%d%n", &i, &n);
-		if (r == 1 && n == strlen(value)) {
-			// converted is integer
+		if (r == 1 && n == strlen(value) && converted < 65536 && converted > -32769) {
+			// converted is short integer
 			if (converted > 0 && converted < 65536) {
 				unsigned short value = (unsigned short)converted;
 				setLvar(id, value);
@@ -842,7 +842,7 @@ void WASMIF::setLvar(unsigned short id, const char* value) {
 				LOG_DEBUG(szLogBuffer);
 			}
 		}
-		else { // floating point number
+		else { // use double
 			setLvar(id, converted);
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as double: %f", converted);
 			LOG_DEBUG(szLogBuffer);
