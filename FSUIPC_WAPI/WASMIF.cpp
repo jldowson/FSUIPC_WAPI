@@ -145,8 +145,18 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 
 	// Start message loop
 	while (0 == quit) {
-		SimConnect_CallDispatch(hSimConnect, MyDispatchProc, this);
-		Sleep(1);
+		hr = WaitForSingleObject(hSimEventHandle, 500);
+		switch (hr) {
+			case WAIT_TIMEOUT:
+				continue;
+			case WAIT_OBJECT_0:
+				SimConnect_CallDispatch(hSimConnect, MyDispatchProc, this);
+				continue;
+			default:
+				break;
+		}
+		LOG_ERROR("WaitForSingleObject returned with error, quitting now.");
+		break;
 	}
 	SimConnectEnd();
 
@@ -208,7 +218,9 @@ bool WASMIF::start() {
 	sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Starting FSUIPC7 WASM Interface (WAPI) version %s (WASM version %s)", WAPI_VERSION, WASM_VERSION);
 	LOG_INFO(szLogBuffer);
 
-	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, NULL, simConnection)))
+	hSimEventHandle = CreateEvent(nullptr, false, false, "SimConnectEvent");
+
+	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, hSimEventHandle, simConnection)))
 	{
 		LOG_INFO("Connected to MSFS");
 
@@ -314,7 +326,9 @@ void WASMIF::SimConnectEnd() {
 		LOG_INFO("SimConnect_Close done");
 	}
 
-	hSimConnect = NULL;
+	hSimConnect = nullptr;
+	CloseHandle(hSimEventHandle);
+	hSimEventHandle = nullptr;
 }
 
 
