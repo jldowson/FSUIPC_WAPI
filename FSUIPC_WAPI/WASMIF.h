@@ -29,6 +29,9 @@ enum LOGLEVEL
 class WASMIF
 {
 	public:
+		static class WASMIF* GetInstance(int startEventNo, void (*loggerFunction)(const char* logString) = nullptr);
+		static class WASMIF* GetInstance(void (*loggerFunction)(const char* logString) = nullptr);
+		// The 2 methods below are kept for backwards compatibility. The HWND handle is no longer required.
 		static class WASMIF* GetInstance(HWND hWnd, int startEventNo = EVENT_START_NO, void (*loggerFunction)(const char* logString) = nullptr);
 		static class WASMIF* GetInstance(HWND hWnd, void (*loggerFunction)(const char* logString));
 
@@ -73,8 +76,8 @@ class WASMIF
 	public:
 		// Internal functions that need to be public. Do not use.
 		static void CALLBACK MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);
-		static VOID CALLBACK StaticConfigTimer(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
-		static VOID CALLBACK StaticRequestDataTimer(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
+		static void CALLBACK StaticConfigTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
+		static void CALLBACK StaticRequestDataTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 
 	protected:
 		WASMIF();
@@ -82,8 +85,8 @@ class WASMIF
 	private:
 		static DWORD WINAPI StaticSimConnectThreadStart(void* Param);
 		void DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData);
-		VOID CALLBACK ConfigTimer(HWND hWnd, UINT uMsg, DWORD dwTime);
-		VOID CALLBACK RequestDataTimer(HWND hWnd, UINT uMsg, DWORD dwTime);
+		void ConfigTimer();
+		void RequestDataTimer();
 		volatile  HANDLE hThread = NULL;
 		DWORD WINAPI SimConnectStart();
 		void SimConnectEnd();
@@ -94,10 +97,9 @@ class WASMIF
 	private:
 		static WASMIF* m_Instance;
 		HANDLE  hSimConnect;
-		HWND hWnd;
 		int quit, noLvarCDAs, noHvarCDAs, startEventNo, lvarUpdateFrequency;
-		UINT_PTR configTimer;
-		UINT_PTR requestTimer;
+		HANDLE configTimerHandle = nullptr;
+		HANDLE requestTimerHandle = nullptr;
 		ClientDataArea* lvar_cdas[MAX_NO_LVAR_CDAS];
 		ClientDataArea* hvar_cdas[MAX_NO_HVAR_CDAS];
 		ClientDataArea* value_cda[MAX_NO_VALUE_CDAS];

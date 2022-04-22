@@ -30,7 +30,6 @@ Logger* pLogger = nullptr;
 
 WASMIF::WASMIF() {
 	hSimConnect = NULL;
-	configTimer = 0;
 	quit = 0;
 	noLvarCDAs = 0;
 	noHvarCDAs = 0;
@@ -48,11 +47,10 @@ void WASMIF::setSimConfigConnection(int connection) {
 }
 
 
-WASMIF* WASMIF::GetInstance(HWND hWnd, int startEventNo, void (*loggerFunction)(const char* logString)) {
-    if (m_Instance == 0)
-    {
-        m_Instance = new WASMIF();
-		m_Instance->hWnd = hWnd;
+WASMIF* WASMIF::GetInstance(int startEventNo, void (*loggerFunction)(const char* logString)) {
+	if (m_Instance == 0)
+	{
+		m_Instance = new WASMIF();
 		m_Instance->startEventNo = startEventNo;
 		if (loggerFunction == nullptr) {
 			pLogger = Logger::getInstance(".\\FSUIPC_WASMIF");
@@ -60,26 +58,20 @@ WASMIF* WASMIF::GetInstance(HWND hWnd, int startEventNo, void (*loggerFunction)(
 		else {
 			pLogger = Logger::getInstance(loggerFunction);
 		}
-    }
-    return m_Instance;
-}
-
-
-WASMIF* WASMIF::GetInstance(HWND hWnd, void (*loggerFunction)(const char* logString)) {
-	if (m_Instance == 0)
-	{
-		m_Instance = new WASMIF();
-		m_Instance->hWnd = hWnd;
-		m_Instance->startEventNo = EVENT_START_NO;
-		if (loggerFunction == nullptr) {
-			pLogger = Logger::getInstance(".\\FSUIPC_WASMIF");
-		}
-		else {
-			pLogger = Logger::getInstance(loggerFunction);
-		}
-		m_Instance->lvarUpdateFrequency = 0;
 	}
 	return m_Instance;
+}
+
+WASMIF* WASMIF::GetInstance(void (*loggerFunction)(const char* logString)) {
+	return GetInstance(EVENT_START_NO, loggerFunction);
+}
+
+WASMIF* WASMIF::GetInstance(HWND, int startEventNo, void (*loggerFunction)(const char* logString)) {
+	return GetInstance(startEventNo, loggerFunction);
+}
+
+WASMIF* WASMIF::GetInstance(HWND, void (*loggerFunction)(const char* logString)) {
+	return GetInstance(loggerFunction);
 }
 
 
@@ -149,7 +141,7 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	cdaIdBank = new CDAIdBank(CDAId, hSimConnect);
 
 	// Set timer to request config data
-	configTimer = SetTimer(hWnd, UINT_PTR(this), 500, &WASMIF::StaticConfigTimer);
+	CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 500, WT_EXECUTEDEFAULT);
 
 	// Start message loop
 	while (0 == quit) {
@@ -164,15 +156,16 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 }
 
 
-VOID CALLBACK WASMIF::StaticConfigTimer(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
-	((WASMIF*)idEvent)->ConfigTimer(hWnd, uMsg, dwTime);
+void CALLBACK WASMIF::StaticConfigTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
+	((WASMIF*)lpParameter)->ConfigTimer();
 }
 
-VOID CALLBACK WASMIF::StaticRequestDataTimer(HWND hWnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime) {
-	((WASMIF*)idEvent)->RequestDataTimer(hWnd, uMsg, dwTime);
+void CALLBACK WASMIF::StaticRequestDataTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
+	((WASMIF*)lpParameter)->RequestDataTimer();
 }
 
-VOID CALLBACK WASMIF::ConfigTimer(HWND hWnd, UINT uMsg, DWORD dwTime) {
+
+void WASMIF::ConfigTimer() {
 
 	if (!SUCCEEDED(SimConnect_RequestClientData(hSimConnect, 1, EVENT_CONFIG_RECEIVED, 1,
 		SIMCONNECT_CLIENT_DATA_PERIOD_ONCE, SIMCONNECT_CLIENT_DATA_REQUEST_FLAG_DEFAULT, 0, 0, 0)))
@@ -185,7 +178,7 @@ VOID CALLBACK WASMIF::ConfigTimer(HWND hWnd, UINT uMsg, DWORD dwTime) {
 }
 
 
-VOID CALLBACK WASMIF::RequestDataTimer(HWND hWnd, UINT uMsg, DWORD dwTime) {
+void WASMIF::RequestDataTimer() {
 	// Send event to update lvar list
 	if (!SUCCEEDED(SimConnect_TransmitClientEvent(hSimConnect, SIMCONNECT_SIMOBJECT_TYPE_USER, EVENT_UPDATE_CDAS, 0, SIMCONNECT_GROUP_PRIORITY_HIGHEST, SIMCONNECT_EVENT_FLAG_GROUPID_IS_PRIORITY)))
 	{
@@ -256,13 +249,15 @@ void WASMIF::end() {
 
 void WASMIF::SimConnectEnd() {
 	char szLogBuffer[256];
-	if (requestTimer) {
-		KillTimer(hWnd, requestTimer);
-		requestTimer = 0;
+	if (requestTimerHandle) {
+		DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
+		CloseHandle(requestTimerHandle);
+		requestTimerHandle = nullptr;
 	}
-	if (configTimer) {
-		KillTimer(hWnd, configTimer);
-		configTimer = 0;
+	if (configTimerHandle) {
+		DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
+		CloseHandle(configTimerHandle);
+		configTimerHandle = nullptr;
 	}
 
 	// Clear Client Data Definitions
@@ -344,13 +339,15 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_CONFIG_RECEIVED:
 		{
 			LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
-			if (configTimer) {
-				KillTimer(hWnd, configTimer);
-				configTimer = 0;
+			if (configTimerHandle) {
+				DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
+				CloseHandle(configTimerHandle);
+				configTimerHandle = nullptr;
 			}
-			if (requestTimer) {
-				KillTimer(hWnd, requestTimer);
-				requestTimer = 0;
+			if (requestTimerHandle) {
+				DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
+				CloseHandle(requestTimerHandle);
+				requestTimerHandle = nullptr;
 			}
 
 			// Clear current lvar/hvar names and lvar values - these will be rebuilt when we receive the data
@@ -418,7 +415,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			if (!(noLvarCDAs + noHvarCDAs)) {
 				LOG_TRACE("Empty config data received - requesting again");
-				configTimer = SetTimer(hWnd, UINT_PTR(this), 500, &WASMIF::StaticConfigTimer);
+				CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 500, WT_EXECUTEDEFAULT);
 				break;
 			}
 
@@ -502,7 +499,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			// Request data on timer if set
 			if (noLvarCDAs && this->getLvarUpdateFrequency()) {
-				requestTimer = SetTimer(hWnd, UINT_PTR(this), 1000/(this->getLvarUpdateFrequency()), &WASMIF::StaticRequestDataTimer);
+				CreateTimerQueueTimer(&requestTimerHandle, nullptr, &WASMIF::StaticRequestDataTimer, this, 0, 1000 / getLvarUpdateFrequency(), WT_EXECUTEDEFAULT);
 			}
 
 
