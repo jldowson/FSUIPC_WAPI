@@ -87,7 +87,6 @@ class WASMIF
 		void DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData);
 		void ConfigTimer();
 		void RequestDataTimer();
-		volatile  HANDLE hThread = NULL;
 		DWORD WINAPI SimConnectStart();
 		void SimConnectEnd();
 		const char* getEventString(int eventNo);
@@ -97,6 +96,8 @@ class WASMIF
 	private:
 		static WASMIF* m_Instance;
 		HANDLE  hSimConnect;
+		volatile HANDLE hThread = nullptr;
+		HANDLE hSimEventHandle = nullptr;
 		int quit, noLvarCDAs, noHvarCDAs, startEventNo, lvarUpdateFrequency;
 		HANDLE configTimerHandle = nullptr;
 		HANDLE requestTimerHandle = nullptr;
