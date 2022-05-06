@@ -262,13 +262,13 @@ void WASMIF::end() {
 void WASMIF::SimConnectEnd() {
 	char szLogBuffer[256];
 	if (requestTimerHandle) {
+//		CloseHandle(requestTimerHandle);
 		DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
-		CloseHandle(requestTimerHandle);
 		requestTimerHandle = nullptr;
 	}
 	if (configTimerHandle) {
+//		CloseHandle(configTimerHandle);
 		DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
-		CloseHandle(configTimerHandle);
 		configTimerHandle = nullptr;
 	}
 
@@ -354,13 +354,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 			LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
 			if (configTimerHandle) {
+//				CloseHandle(configTimerHandle);
 				DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
-				CloseHandle(configTimerHandle);
 				configTimerHandle = nullptr;
 			}
 			if (requestTimerHandle) {
+//				CloseHandle(requestTimerHandle);
 				DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
-				CloseHandle(requestTimerHandle);
 				requestTimerHandle = nullptr;
 			}
 
