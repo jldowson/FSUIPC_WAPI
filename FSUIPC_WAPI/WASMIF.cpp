@@ -19,8 +19,8 @@ enum WASM_EVENT_ID {
 	// Events we receive
 	EVENT_CONFIG_RECEIVED = 9,  // Config data received from the WASM, giving details of CDAs and sizes required
 	EVENT_VALUES_RECEIVED = 10, // Start event number of events received when an lvar value CDA have been updated. Allow for MAX_NO_VALUE_CDAS (2)
-	EVENT_LVARS_RECEIVED = 12, // Start event number of events received when an lvar name CDA have been updated. Allow for MAX_NO_LVAR_CDAS (12)
-	EVENT_HVARS_RECEIVED = 30, // Start event number of events received when an hvar name CDA have been updated. Allow for MAX_NO_HVAR_CDAS (4)
+	EVENT_LVARS_RECEIVED = 13, // Start event number of events received when an lvar name CDA have been updated. Allow for MAX_NO_LVAR_CDAS (12)
+	EVENT_HVARS_RECEIVED = 40, // Start event number of events received when an hvar name CDA have been updated. Allow for MAX_NO_HVAR_CDAS (4)
 };
 
 WASMIF* WASMIF::m_Instance = 0;
@@ -262,12 +262,10 @@ void WASMIF::end() {
 void WASMIF::SimConnectEnd() {
 	char szLogBuffer[256];
 	if (requestTimerHandle) {
-//		CloseHandle(requestTimerHandle);
 		DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
 		requestTimerHandle = nullptr;
 	}
 	if (configTimerHandle) {
-//		CloseHandle(configTimerHandle);
 		DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
 		configTimerHandle = nullptr;
 	}
@@ -354,12 +352,10 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 			LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
 			if (configTimerHandle) {
-//				CloseHandle(configTimerHandle);
 				DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
 				configTimerHandle = nullptr;
 			}
 			if (requestTimerHandle) {
-//				CloseHandle(requestTimerHandle);
 				DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
 				requestTimerHandle = nullptr;
 			}
@@ -528,7 +524,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			noLvarCDAsReceived = 0;
 			break;
 		}
-		case EVENT_LVARS_RECEIVED: // Allow for 14 distinct lvar CDAs
+		case EVENT_LVARS_RECEIVED: // Allow for 21 distinct lvar CDAs
 		case EVENT_LVARS_RECEIVED + 1:
 		case EVENT_LVARS_RECEIVED + 2:
 		case EVENT_LVARS_RECEIVED + 3:
@@ -542,6 +538,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_LVARS_RECEIVED + 11:
 		case EVENT_LVARS_RECEIVED + 12:
 		case EVENT_LVARS_RECEIVED + 13:
+		case EVENT_LVARS_RECEIVED + 14:
+		case EVENT_LVARS_RECEIVED + 15:
+		case EVENT_LVARS_RECEIVED + 16:
+		case EVENT_LVARS_RECEIVED + 17:
+		case EVENT_LVARS_RECEIVED + 18:
+		case EVENT_LVARS_RECEIVED + 19:
+		case EVENT_LVARS_RECEIVED + 20:
 		{
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 					pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
@@ -690,6 +693,60 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					flaggedLvarNames.push_back(lvarNames.at(1024 + i).c_str());
 				}
 				lvarValues.at(1024 + i) = values[i].value;
+			}
+			LeaveCriticalSection(&lvarNamesMutex);
+			LeaveCriticalSection(&lvarValuesMutex);
+			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
+				// Add a terminating element
+				flaggedLvarIds.push_back(-1);
+				flaggedLvarValues.push_back(-1.0);
+				lvarCbFunctionId(flaggedLvarIds.data(), flaggedLvarValues.data());
+			}
+			else if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
+				// Add a terminating element
+				flaggedLvarNames.push_back(NULL);
+				if (lvarCbFunctionId == NULL) {
+					flaggedLvarValues.push_back(-1.0);
+				}
+				lvarCbFunctionName(flaggedLvarNames.data(), flaggedLvarValues.data());
+
+			}
+			break;
+		}
+		case EVENT_VALUES_RECEIVED + 2:
+		{
+			// Check values match definition
+			if (value_cda[2]->getDefinitionId() != pObjData->dwDefineID) break;
+			EnterCriticalSection(&lvarNamesMutex);
+			if (lvarNames.size() <= 2048) {
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+2: Ignoring as we only have %llu lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
+					lvarNames.size(), pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
+				LOG_DEBUG(szLogBuffer);
+				break;
+			}
+			LeaveCriticalSection(&lvarNamesMutex);
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+2: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
+				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
+			LOG_TRACE(szLogBuffer);
+			vector<int> flaggedLvarIds;
+			vector<const char*> flaggedLvarNames;
+			vector<double> flaggedLvarValues;
+
+			CDAValue* values = (CDAValue*)&(pObjData->dwData);
+			EnterCriticalSection(&lvarValuesMutex);
+			EnterCriticalSection(&lvarNamesMutex);
+			for (int i = 0; i < value_cda[2]->getNoItems() && i + 2048 < lvarNames.size(); i++)
+			{
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i + 2048, values[i].value);
+				LOG_TRACE(szLogBuffer);
+				if (lvarValues.at(2048 + i) != values[i].value && lvarFlaggedForCallback.at(2048 + i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
+					sprintf(szLogBuffer, "Flagging lvar for callback: id=%d", 2048 + i);
+					LOG_DEBUG(szLogBuffer);
+					flaggedLvarIds.push_back(2048 + i);
+					flaggedLvarValues.push_back(values[i].value);
+					flaggedLvarNames.push_back(lvarNames.at(2048 + i).c_str());
+				}
+				lvarValues.at(2048 + i) = values[i].value;
 			}
 			LeaveCriticalSection(&lvarNamesMutex);
 			LeaveCriticalSection(&lvarValuesMutex);
