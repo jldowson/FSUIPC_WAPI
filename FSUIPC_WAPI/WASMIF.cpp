@@ -350,10 +350,18 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 		case EVENT_CONFIG_RECEIVED:
 		{
+			static CONFIG_CDA currentConfigSet;
+
 			LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
+			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
 			if (configTimerHandle) {
 				DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
 				configTimerHandle = nullptr;
+			}
+			else if (!memcmp(&currentConfigSet, configData, sizeof(CONFIG_CDA))) // We didn't request this - check it has changed
+			{
+				LOG_TRACE("Ignoring EVENT_CONFIG_RECEIVED event as no change");
+				break;
 			}
 			if (requestTimerHandle) {
 				DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
@@ -412,7 +420,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 			noHvarCDAs = 0;
 
-			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
+			memcpy(&currentConfigSet, configData, sizeof(CONFIG_CDA));
 
 			for (int i = 0; i < MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS; i++)
 			{
@@ -557,6 +565,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			{
 				if (lvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
 			}
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "cda=%d (noLvarCDAs=%d)", cdaId, noLvarCDAs);
+			LOG_TRACE(szLogBuffer);
 			if (cdaId < noLvarCDAs)
 			{
 				for (int i = 0; i < lvar_cdas[cdaId]->getNoItems(); i++)
