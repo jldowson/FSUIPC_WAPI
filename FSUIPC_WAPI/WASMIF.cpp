@@ -141,7 +141,7 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	cdaIdBank = new CDAIdBank(CDAId, hSimConnect);
 
 	// Set timer to request config data
-	CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 500, WT_EXECUTEDEFAULT);
+	CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 1000, WT_EXECUTEDEFAULT);
 
 	// Start message loop
 	while (0 == quit) {
@@ -433,7 +433,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			if (!(noLvarCDAs + noHvarCDAs)) {
 				LOG_TRACE("Empty config data received - requesting again");
-				CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 500, WT_EXECUTEDEFAULT);
+				CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 1000, WT_EXECUTEDEFAULT);
 				break;
 			}
 
