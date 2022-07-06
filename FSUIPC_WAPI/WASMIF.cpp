@@ -218,7 +218,7 @@ bool WASMIF::start() {
 	sprintf_s(szLogBuffer, sizeof(szLogBuffer), "**** Starting FSUIPC7 WASM Interface (WAPI) version %s (WASM version %s)", WAPI_VERSION, WASM_VERSION);
 	LOG_INFO(szLogBuffer);
 
-	hSimEventHandle = CreateEvent(nullptr, false, false, "SimConnectEvent");
+	hSimEventHandle = CreateEvent(nullptr, false, false, NULL);
 
 	if (SUCCEEDED(hr = SimConnect_Open(&hSimConnect, "FSUIPC-WASM-IF", NULL, 0, hSimEventHandle, simConnection)))
 	{
