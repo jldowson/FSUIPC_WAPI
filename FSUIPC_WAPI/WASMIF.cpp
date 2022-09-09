@@ -37,6 +37,7 @@ WASMIF::WASMIF() {
 	InitializeCriticalSection(&lvarValuesMutex);
 	InitializeCriticalSection(&lvarNamesMutex);
 	InitializeCriticalSection(&hvarNamesMutex);
+	InitializeCriticalSection(&configMutex);
 	simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL; // = -1
 }
 
@@ -337,7 +338,7 @@ void CALLBACK WASMIF::MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void*
 
 
 void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
-	char szLogBuffer[256];
+	char szLogBuffer[512];
 	static int noLvarCDAsReceived = 0;
 
 	switch (pData->dwID)
@@ -352,7 +353,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 			static CONFIG_CDA currentConfigSet;
 
-			LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
+			// Need lock to make sure lvars are not being received
+			EnterCriticalSection(&configMutex);
+
 			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
 			if (configTimerHandle) {
 				DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
@@ -361,6 +364,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			else if (!memcmp(&currentConfigSet, configData, sizeof(CONFIG_CDA))) // We didn't request this - check it has changed
 			{
 				LOG_TRACE("Ignoring EVENT_CONFIG_RECEIVED event as no change");
+				LeaveCriticalSection(&configMutex);
 				break;
 			}
 			if (requestTimerHandle) {
@@ -432,10 +436,12 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 
 			if (!(noLvarCDAs + noHvarCDAs)) {
-				LOG_TRACE("Empty config data received - requesting again");
+				LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: Empty EVENT_CONFIG_RECEIVED - requesting again");
 				CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 1000, WT_EXECUTEDEFAULT);
 				break;
 			}
+
+			LOG_DEBUG("SIMCONNECT_RECV_ID_CLIENT_DATA received: EVENT_CONFIG_RECEIVED");
 
 			// Check WASM version compatibility
 			if (strcmp(configData->version, WASM_VERSION) != 0) {
@@ -530,6 +536,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_TRACE("Config data updates requested.");
 			// Reset lvars received counter
 			noLvarCDAsReceived = 0;
+			LeaveCriticalSection(&configMutex);
 			break;
 		}
 		case EVENT_LVARS_RECEIVED: // Allow for 21 distinct lvar CDAs
@@ -554,21 +561,23 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_LVARS_RECEIVED + 19:
 		case EVENT_LVARS_RECEIVED + 20:
 		{
-			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
-					pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
-			LOG_DEBUG(szLogBuffer);
-			noLvarCDAsReceived++;
+			// Need lock to make sure new config data is not processed when we are adding lvars
+			EnterCriticalSection(&configMutex);
 			CDAName* lvars = (CDAName*)&(pObjData->dwData);
 			// Find id of CDA
 			int cdaId = 0;
 			for (cdaId = 0; cdaId < MAX_NO_LVAR_CDAS; cdaId++)
 			{
-				if (lvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
+				if (lvar_cdas[cdaId] != NULL && lvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
 			}
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "cda=%d (noLvarCDAs=%d)", cdaId, noLvarCDAs);
 			LOG_TRACE(szLogBuffer);
 			if (cdaId < noLvarCDAs)
 			{
+				noLvarCDAsReceived++;
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED:%d of %d: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
+					noLvarCDAsReceived, noLvarCDAs, pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
+				LOG_DEBUG(szLogBuffer);
 				for (int i = 0; i < lvar_cdas[cdaId]->getNoItems(); i++)
 				{
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "LVAR Data: name='%s'", lvars[i].name);
@@ -581,15 +590,19 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					LeaveCriticalSection(&lvarValuesMutex);
 					lvarFlaggedForCallback.push_back(FALSE);
 				}
+				if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL) {
+					// All lvar names received - call CDA update callback if registered
+					cdaCbFunction();
+				}
 			}
 			else {
+				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED but id not found:%d of %d: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
+					noLvarCDAsReceived, noLvarCDAs, pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
+				LOG_DEBUG(szLogBuffer);
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error: CDA with id=%d not found", pObjData->dwObjectID);
 				LOG_ERROR(szLogBuffer);
 			}
-			if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL) {
-				// All lvar names received - call CDA update callback if registered
-				cdaCbFunction();
-			}
+			LeaveCriticalSection(&configMutex);
 			break;
 		}
 		case EVENT_HVARS_RECEIVED:
@@ -597,6 +610,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_HVARS_RECEIVED+2:
 		case EVENT_HVARS_RECEIVED+3:
 		{
+			EnterCriticalSection(&configMutex);
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_HVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_DEBUG(szLogBuffer);
@@ -606,7 +620,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			EnterCriticalSection(&hvarNamesMutex);
 			for (cdaId = 0; cdaId < MAX_NO_HVAR_CDAS; cdaId++)
 			{
-				if (hvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
+				if (hvar_cdas[cdaId] != NULL && hvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
 			}
 			if (cdaId < noHvarCDAs)
 			{
@@ -622,6 +636,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_ERROR(szLogBuffer);
 			}
 			LeaveCriticalSection(&hvarNamesMutex);
+			LeaveCriticalSection(&configMutex);
 			break;
 		}
 		case EVENT_VALUES_RECEIVED:
