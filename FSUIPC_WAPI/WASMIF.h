@@ -9,7 +9,7 @@
 #include "ClientDataArea.h"
 #include "CDAIdBank.h"
 
-#define WAPI_VERSION			"0.5.11"
+#define WAPI_VERSION			"0.9.0"
 
 using namespace ClientDataAreaMSFS;
 using namespace CDAIdBankMSFS;
@@ -29,11 +29,9 @@ enum LOGLEVEL
 class WASMIF
 {
 	public:
-		static class WASMIF* GetInstance(int startEventNo, void (*loggerFunction)(const char* logString) = nullptr);
 		static class WASMIF* GetInstance(void (*loggerFunction)(const char* logString) = nullptr);
 		// The 2 methods below are kept for backwards compatibility. The HWND handle is no longer required.
-		static class WASMIF* GetInstance(HWND hWnd, int startEventNo = EVENT_START_NO, void (*loggerFunction)(const char* logString) = nullptr);
-		static class WASMIF* GetInstance(HWND hWnd, void (*loggerFunction)(const char* logString));
+		static class WASMIF* GetInstance(HWND hWnd, void (*loggerFunction)(const char* logString) = nullptr);
 
 		bool start(); // Startrs the connection to the WASM. 
 		bool isRunning(); // Returns True if cpnnected to the WASM 
@@ -98,7 +96,7 @@ class WASMIF
 		HANDLE  hSimConnect;
 		volatile HANDLE hThread = nullptr;
 		HANDLE hSimEventHandle = nullptr;
-		int quit, noLvarCDAs, noHvarCDAs, startEventNo, lvarUpdateFrequency;
+		int quit, noLvarCDAs, noHvarCDAs, lvarUpdateFrequency;
 		HANDLE configTimerHandle = nullptr;
 		HANDLE requestTimerHandle = nullptr;
 		ClientDataArea* lvar_cdas[MAX_NO_LVAR_CDAS];

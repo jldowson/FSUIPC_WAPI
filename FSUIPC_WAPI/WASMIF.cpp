@@ -10,12 +10,12 @@ using namespace CPlusPlusLogging;
 
 enum WASM_EVENT_ID {
 	// Events we send
-	EVENT_SET_LVAR = 1,		// map to StartEventNo + 1, used to set unsigned shorts via SimConnect
-	EVENT_SET_HVAR,			// map to StartEventNo + 2, used to activat a hvar via SimConnect
-	EVENT_UPDATE_CDAS,		// map to StartEventNo + 3, used to request an lvar values update
-	EVENT_LIST_LVARS,		// map to StartEventNo + 4, used to generate lvar files. Depracated
-	EVENT_RELOAD,			// map to StartEventNo + 5, used to reload lvars/hvars and re-create the CDAs
-	EVENT_SET_LVARS,		// map to StartEventNo + 6, used to set signed shorts via SimConnect
+	EVENT_SET_LVAR = 1,		// used to set unsigned shorts via SimConnect
+	EVENT_SET_HVAR,			// used to activat a hvar via SimConnect
+	EVENT_UPDATE_CDAS,		// used to request an lvar values update
+	EVENT_LIST_LVARS,		// used to generate lvar files. Depracated
+	EVENT_RELOAD,			// used to reload lvars/hvars and re-create the CDAs
+	EVENT_SET_LVARS,		// used to set signed shorts via SimConnect
 	// Events we receive
 	EVENT_CONFIG_RECEIVED = 9,  // Config data received from the WASM, giving details of CDAs and sizes required
 	EVENT_VALUES_RECEIVED = 10, // Start event number of events received when an lvar value CDA have been updated. Allow for MAX_NO_VALUE_CDAS (2)
@@ -26,6 +26,7 @@ enum WASM_EVENT_ID {
 WASMIF* WASMIF::m_Instance = 0;
 int WASMIF::nextDefinitionID = 1; // 1 taken by config CDA
 Logger* pLogger = nullptr;
+static CONFIG_CDA currentConfigSet;
 
 
 WASMIF::WASMIF() {
@@ -48,11 +49,10 @@ void WASMIF::setSimConfigConnection(int connection) {
 }
 
 
-WASMIF* WASMIF::GetInstance(int startEventNo, void (*loggerFunction)(const char* logString)) {
+WASMIF* WASMIF::GetInstance(void (*loggerFunction)(const char* logString)) {
 	if (m_Instance == 0)
 	{
 		m_Instance = new WASMIF();
-		m_Instance->startEventNo = startEventNo;
 		if (loggerFunction == nullptr) {
 			pLogger = Logger::getInstance(".\\FSUIPC_WASMIF");
 		}
@@ -63,30 +63,9 @@ WASMIF* WASMIF::GetInstance(int startEventNo, void (*loggerFunction)(const char*
 	return m_Instance;
 }
 
-WASMIF* WASMIF::GetInstance(void (*loggerFunction)(const char* logString)) {
-	return GetInstance(EVENT_START_NO, loggerFunction);
-}
-
-WASMIF* WASMIF::GetInstance(HWND, int startEventNo, void (*loggerFunction)(const char* logString)) {
-	return GetInstance(startEventNo, loggerFunction);
-}
-
-WASMIF* WASMIF::GetInstance(HWND, void (*loggerFunction)(const char* logString)) {
-	return GetInstance(loggerFunction);
-}
-
 
 void WASMIF::setLogLevel(LOGLEVEL logLevel) {
 	pLogger->updateLogLevel((LogLevel)logLevel);
-}
-
-
-const char* WASMIF::getEventString(int eventNo) {
-	std::stringstream stream;
-	stream << "#0x" << std::hex << startEventNo + eventNo;
-	std::string* result = new std::string(stream.str());
-
-	return result->c_str();
 }
 
 
@@ -95,14 +74,13 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	int CDAId = 1;
 	nextDefinitionID = 1;
 
-//	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_GET_CONFIG, getEventString(EVENT_GET_CONFIG));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVAR, getEventString(EVENT_SET_LVAR));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_HVAR, getEventString(EVENT_SET_HVAR));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_UPDATE_CDAS, getEventString(EVENT_UPDATE_CDAS));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_LIST_LVARS, getEventString(EVENT_LIST_LVARS));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_RELOAD, getEventString(EVENT_RELOAD));
-	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARS, getEventString(EVENT_SET_LVARS));
-
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVAR, SET_LVAR_EVENT); // getEventString(EVENT_SET_LVAR));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_HVAR, ACTIVATE_HVAR_EVENT); // getEventString(EVENT_SET_HVAR));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_UPDATE_CDAS, UPDATE_CONFIG_EVENT); // getEventString(EVENT_UPDATE_CDAS));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_LIST_LVARS, LIST_LVARS_EVENT); // getEventString(EVENT_LIST_LVARS));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_RELOAD, RELOAD_EVENT); // getEventString(EVENT_RELOAD));
+	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARS, SET_LVAR_SIGNED_EVENT); // getEventString(EVENT_SET_LVARS));
+	
 	hr = SimConnect_SetNotificationGroupPriority(hSimConnect, 1, SIMCONNECT_GROUP_PRIORITY_HIGHEST);
 
 	// Now register Client Data Area
@@ -142,9 +120,11 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	cdaIdBank = new CDAIdBank(CDAId, hSimConnect);
 
 	// Set timer to request config data
+	LOG_DEBUG("Starting config request timer...");
 	CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 1000, WT_EXECUTEDEFAULT);
 
 	// Start message loop
+	LOG_TRACE("Starting message loop...");
 	while (0 == quit) {
 		hr = WaitForSingleObject(hSimEventHandle, 500);
 		switch (hr) {
@@ -159,6 +139,7 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 		LOG_ERROR("WaitForSingleObject returned with error, quitting now.");
 		break;
 	}
+	LOG_TRACE("Message loop finished - calling SimConnectEnd()...");
 	SimConnectEnd();
 
 	hThread = NULL;
@@ -328,6 +309,7 @@ void WASMIF::SimConnectEnd() {
 	hSimConnect = nullptr;
 	CloseHandle(hSimEventHandle);
 	hSimEventHandle = nullptr;
+	currentConfigSet = { 0 };
 }
 
 
@@ -351,8 +333,6 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 		case EVENT_CONFIG_RECEIVED:
 		{
-			static CONFIG_CDA currentConfigSet;
-
 			// Need lock to make sure lvars are not being received
 			EnterCriticalSection(&configMutex);
 
@@ -438,6 +418,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			if (!(noLvarCDAs + noHvarCDAs)) {
 				LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: Empty EVENT_CONFIG_RECEIVED - requesting again");
 				CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 1000, WT_EXECUTEDEFAULT);
+				LeaveCriticalSection(&configMutex);
 				break;
 			}
 

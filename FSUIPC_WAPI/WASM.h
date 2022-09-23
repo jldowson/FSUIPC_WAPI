@@ -3,7 +3,7 @@
  * Main WASM Interface. This is the file that is shared
  * between the WASM module and the Client.
  */
-#define WASM_VERSION			"0.5.9"
+#define WASM_VERSION			"0.9.0"
 #define MAX_VAR_NAME_SIZE		56 // Max size of a CDA is 8k. So Max no lvars per CDK is 8192/(this valuw) = 146
 #define MAX_CDA_NAME_SIZE		64 
 #define MAX_NO_VALUE_CDAS		3 // Allows for 3*1024 lvars 
@@ -14,17 +14,13 @@
 #define CCODE_CDA_NAME			"FSUIPC_CalcCode"
 #define MAX_CALC_CODE_SIZE		1024 // Up to 8k
 
-// Define the default value where our events start. From this:
-//    0 = Get Config Data (provided but shouldn't be needed)
-//   +1 = Set LVAR (unsigned short values): parameter contains LVAR ID in low word and encoded value in hi word
-//   +2 = Set HVAR: parameter contains ID of CDA that holds the lvar in the low word, and the hvar index number in the hi word
-//   +3 = Request to Update LVARS: ignored if WASM is updating internally.
-//   +4 = Request to List LVARS (generates aircraft LVAR file)
-//   +5 = Reload Control: scans for lvars and re-reads hvar files and drops and re-creates all CDAs accordingly
-//   +6 = Set LVAR (signed short values): parameter contains LVAR ID in low word and encoded value in hi word
-// Note that it should be possible to change this value (via an ini parameter)
-// in both the WASM module and any clients. They must, of course, match.
-#define EVENT_START_NO			0x1FFF0
+// Custom Event Names
+#define RELOAD_EVENT "FSUIPC.Reload"
+#define SET_LVAR_EVENT "FSUIPC.SetLvar"
+#define ACTIVATE_HVAR_EVENT "FSUIPC.SetHvar"
+#define UPDATE_CONFIG_EVENT "FSUIPC.UpdateCDAs"
+#define LIST_LVARS_EVENT "FSUIPC.ListLvars"
+#define SET_LVAR_SIGNED_EVENT "FSUIPC.SetLvarS"
 
 #pragma pack(push, 1)
 namespace WASM {
