@@ -1039,7 +1039,7 @@ void WASMIF::setLvarS(DWORD param) {
 		LOG_ERROR("SimConnect_TransmitClientEvent for EVENT_SET_LVARS failed!!!!");
 	}
 	else {
-		unsigned short value = static_cast<short>(param >> (2 * 8));
+		short value = static_cast<short>(param >> (2 * 8));
 		unsigned short id = static_cast<unsigned short>(param % (1 << (2 * 8)));
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Control sent to set lvars with parameter %d (%X): lvarId=%u (%X), value=%d (%X)", param, param,
 			id, id, value, value);
