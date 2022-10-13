@@ -787,6 +787,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		break;
 	}
 
+/***
 	case SIMCONNECT_RECV_ID_EVENT:
 	{
 		SIMCONNECT_RECV_EVENT* evt = (SIMCONNECT_RECV_EVENT*)pData;
@@ -801,7 +802,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 		break;
 	}
-
+***/
 
 	case SIMCONNECT_RECV_ID_QUIT:
 	{
