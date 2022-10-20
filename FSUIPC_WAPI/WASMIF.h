@@ -9,7 +9,7 @@
 #include "ClientDataArea.h"
 #include "CDAIdBank.h"
 
-#define WAPI_VERSION			"0.9.0"
+#define WAPI_VERSION			"0.9.1"
 
 using namespace ClientDataAreaMSFS;
 using namespace CDAIdBankMSFS;
