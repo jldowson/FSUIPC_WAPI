@@ -108,7 +108,7 @@ class WASMIF
 		vector<bool> lvarFlaggedForCallback;
 		vector<string> hvarNames;
 		CDAIdBank* cdaIdBank;
-		int simConnection;
+		int simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL;
 		CRITICAL_SECTION lvarValuesMutex, lvarNamesMutex, hvarNamesMutex, configMutex;
 		void (*cdaCbFunction)(void) = NULL;
 		void (*lvarCbFunctionId)(int id[], double newValue[]) = NULL;
