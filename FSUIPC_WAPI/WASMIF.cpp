@@ -19,7 +19,7 @@ enum WASM_EVENT_ID {
 	// Events we receive
 	EVENT_CONFIG_RECEIVED = 9,  // Config data received from the WASM, giving details of CDAs and sizes required
 	EVENT_VALUES_RECEIVED = 10, // Start event number of events received when an lvar value CDA have been updated. Allow for MAX_NO_VALUE_CDAS (10)
-	EVENT_LVARS_RECEIVED = 30, // Start event number of events received when an lvar name CDA have been updated. Allow for MAX_NO_LVAR_CDAS (63)
+	EVENT_LVARS_RECEIVED = 30, // Start event number of events received when an lvar name CDA have been updated. Allow for MAX_NO_LVAR_CDAS (70)
 	EVENT_HVARS_RECEIVED = 100, // Start event number of events received when an hvar name CDA have been updated. Allow for MAX_NO_HVAR_CDAS (4)
 };
 
@@ -522,7 +522,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			LeaveCriticalSection(&configMutex);
 			break;
 		}
-		case EVENT_LVARS_RECEIVED: // Allow for 63 distinct lvar CDAs
+		case EVENT_LVARS_RECEIVED: // Allow for 70 distinct lvar CDAs
 		case EVENT_LVARS_RECEIVED + 1:
 		case EVENT_LVARS_RECEIVED + 2:
 		case EVENT_LVARS_RECEIVED + 3:
@@ -585,6 +585,14 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_LVARS_RECEIVED + 60:
 		case EVENT_LVARS_RECEIVED + 61:
 		case EVENT_LVARS_RECEIVED + 62:
+		case EVENT_LVARS_RECEIVED + 63:
+		case EVENT_LVARS_RECEIVED + 64:
+		case EVENT_LVARS_RECEIVED + 65:
+		case EVENT_LVARS_RECEIVED + 66:
+		case EVENT_LVARS_RECEIVED + 67:
+		case EVENT_LVARS_RECEIVED + 68:
+		case EVENT_LVARS_RECEIVED + 69:
+//		case EVENT_LVARS_RECEIVED + 70:
 		{
 			// Need lock to make sure new config data is not processed when we are adding lvars
 			EnterCriticalSection(&configMutex);

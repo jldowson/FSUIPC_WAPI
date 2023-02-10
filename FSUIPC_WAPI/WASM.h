@@ -7,7 +7,7 @@
 #define MAX_VAR_NAME_SIZE		56 // Max size of a CDA is 8k. So Max no lvars per CDK is 8192/(this valuw) = 146
 #define MAX_CDA_NAME_SIZE		64 
 #define MAX_NO_VALUE_CDAS		10 // Allows for 10*1024 lvars 
-#define MAX_NO_LVAR_CDAS		63 // 63 is max and allows for 9198 lvars - the max allowed for the 10 value areas (8k/8) is 10,240
+#define MAX_NO_LVAR_CDAS		70 // 70 is max and allows for 10,220 lvars - the max allowed for the 10 value areas (8k/8) is 10,240
 #define MAX_NO_HVAR_CDAS		4 // We can have more of these if needed
 #define CONFIG_CDA_NAME			"FSUIPC_config"
 #define LVARVALUE_CDA_NAME		"FSUIPC_SetLvar"
