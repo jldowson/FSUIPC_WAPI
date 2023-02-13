@@ -366,7 +366,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			LeaveCriticalSection(&lvarNamesMutex);
 			LeaveCriticalSection(&lvarValuesMutex);
 
-			// Drop existing CDAs
+			// Drop existing value CDAs
 			for (int i = 0; i < MAX_NO_VALUE_CDAS; i++) {
 				if (value_cda[i]) {
 					if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, value_cda[i]->getDefinitionId())))
@@ -379,31 +379,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					value_cda[i] = 0;
 				}
 			}
-			
-			for (int i = 0; i < noLvarCDAs; i++)
-			{
-				if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, lvar_cdas[i]->getDefinitionId())))
-				{
-					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing lvar data definition with id=%d", lvar_cdas[i]->getId());
-					LOG_ERROR(szLogBuffer);
-				}
-				cdaIdBank->returnId(lvar_cdas[i]->getName());
-				delete lvar_cdas[i];
-				lvar_cdas[i] = 0;
-			}
 			noLvarCDAs = 0;
-
-			for (int i = 0; i < noHvarCDAs; i++)
-			{
-				if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, hvar_cdas[i]->getDefinitionId())))
-				{
-					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing hvar data definition with id=%d", hvar_cdas[i]->getId());
-					LOG_ERROR(szLogBuffer);
-				}
-				cdaIdBank->returnId(hvar_cdas[i]->getName());
-				delete hvar_cdas[i];
-				hvar_cdas[i] = 0;
-			}
 			noHvarCDAs = 0;
 
 			memcpy(&currentConfigSet, configData, sizeof(CONFIG_CDA));
@@ -623,6 +599,16 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					LeaveCriticalSection(&lvarValuesMutex);
 					lvarFlaggedForCallback.push_back(FALSE);
 				}
+				// Drop lvar CDA after processing
+				if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, lvar_cdas[cdaId]->getDefinitionId())))
+				{
+					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing lvar data definition with id=%d", lvar_cdas[cdaId]->getId());
+					LOG_ERROR(szLogBuffer);
+				}
+				cdaIdBank->returnId(lvar_cdas[cdaId]->getName());
+				delete lvar_cdas[cdaId];
+				lvar_cdas[cdaId] = 0;
+
 				if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL) {
 					// All lvar names received - call CDA update callback if registered
 					cdaCbFunction();
@@ -663,6 +649,15 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					LOG_TRACE(szLogBuffer);
 					hvarNames.push_back(string(hvars[i].name));
 				}
+				// Drop CDA
+				if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, hvar_cdas[cdaId]->getDefinitionId())))
+				{
+					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing hvar data definition with id=%d", hvar_cdas[cdaId]->getId());
+					LOG_ERROR(szLogBuffer);
+				}
+				cdaIdBank->returnId(hvar_cdas[cdaId]->getName());
+				delete hvar_cdas[cdaId];
+				hvar_cdas[cdaId] = 0;
 			}
 			else {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error: CDA with id=%d not found", pObjData->dwDefineID);
