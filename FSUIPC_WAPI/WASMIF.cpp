@@ -381,7 +381,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 			noLvarCDAs = 0;
 			noHvarCDAs = 0;
-
+			int noValueCDAs = 0;
 			memcpy(&currentConfigSet, configData, sizeof(CONFIG_CDA));
 
 			for (int i = 0; i < MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS; i++)
@@ -391,6 +391,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_DEBUG(szLogBuffer);
 				if (configData->CDA_Type[i] == LVARF) noLvarCDAs++;
 				else if (configData->CDA_Type[i] == HVARF) noHvarCDAs++;
+				else if (configData->CDA_Type[i] == VALUEF) noValueCDAs++;
 			}
 
 			if (!(noLvarCDAs + noHvarCDAs)) {
@@ -412,7 +413,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			int lvarCount = 0;
 			int hvarCount = 0;
 			int valuesCount = 0;
-			for (int i = 0; i < noLvarCDAs + noHvarCDAs + MAX_NO_VALUE_CDAS; i++)
+			for (int i = 0; i < noLvarCDAs + noHvarCDAs + noValueCDAs; i++)
 			{
 				// Need to allocate a CDA
 				pair<string, int> cdaDetails = cdaIdBank->getId(configData->CDA_Size[i], configData->CDA_Names[i]);
@@ -453,7 +454,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					LOG_DEBUG(szLogBuffer);
 				}
 
-				// Now, add lvars to data area
+				// Now, request client data area
 				HRESULT hr;
 				switch (configData->CDA_Type[i]) {
 					case LVARF:
@@ -475,7 +476,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 					break;
 				}
 				else {
-					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "CDA '%s with id=%d and definitionId=%d requested", configData->CDA_Names[i], cda->getId(), nextDefinitionID - 1);
+					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "CDA '%s' with id=%d and definitionId=%d requested", configData->CDA_Names[i], cda->getId(), nextDefinitionID - 1);
 					LOG_DEBUG(szLogBuffer);
 				}
 			}
