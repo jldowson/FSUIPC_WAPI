@@ -75,6 +75,7 @@ class WASMIF
 		// Internal functions that need to be public. Do not use.
 		static void CALLBACK MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);
 		static void CALLBACK StaticConfigTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
+		static void CALLBACK StaticLvarCbTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 		static void CALLBACK StaticRequestDataTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 
 	protected:
@@ -84,6 +85,7 @@ class WASMIF
 		static DWORD WINAPI StaticSimConnectThreadStart(void* Param);
 		void DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData);
 		void ConfigTimer();
+		void LvarCbTimer();
 		void RequestDataTimer();
 		DWORD WINAPI SimConnectStart();
 		void SimConnectEnd();
@@ -98,6 +100,7 @@ class WASMIF
 		HANDLE hSimEventHandle = nullptr;
 		int quit, noLvarCDAs, noHvarCDAs, lvarUpdateFrequency;
 		HANDLE configTimerHandle = nullptr;
+		HANDLE lvarCbTimerHandle = nullptr;
 		HANDLE requestTimerHandle = nullptr;
 		ClientDataArea* lvar_cdas[MAX_NO_LVAR_CDAS];
 		ClientDataArea* hvar_cdas[MAX_NO_HVAR_CDAS];

@@ -156,6 +156,15 @@ void CALLBACK WASMIF::StaticRequestDataTimer(PVOID lpParameter, BOOLEAN TimerOrW
 	((WASMIF*)lpParameter)->RequestDataTimer();
 }
 
+void CALLBACK WASMIF::StaticLvarCbTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
+	((WASMIF*)lpParameter)->LvarCbTimer();
+}
+
+void WASMIF::LvarCbTimer() {
+	lvarCbTimerHandle = NULL;
+	LOG_TRACE("Calling Lvar CDAs loaded callback function in LvarCbTimer...");
+	cdaCbFunction();
+}
 
 void WASMIF::ConfigTimer() {
 
@@ -612,7 +621,13 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 				if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL) {
 					// All lvar names received - call CDA update callback if registered
-					cdaCbFunction();
+					if (lvarCbTimerHandle != NULL)
+					{
+						DeleteTimerQueueTimer(nullptr, lvarCbTimerHandle, nullptr);
+						lvarCbTimerHandle = NULL;
+					}
+					CreateTimerQueueTimer(&lvarCbTimerHandle, nullptr, &WASMIF::StaticLvarCbTimer, this, 1000, 0, WT_EXECUTEDEFAULT);
+//					cdaCbFunction();
 				}
 			}
 			else {
