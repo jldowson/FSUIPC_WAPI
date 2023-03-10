@@ -597,7 +597,11 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				lvar_cdas[cdaId] = 0;
 
 				if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL)
+				{
 					lvarsReady = TRUE;
+					// Lock lvar values until all initial values received
+					EnterCriticalSection(&lvarValuesMutex);
+				}
 			}
 			else {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED but id not found:%d of %d: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
@@ -683,7 +687,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			vector<double> flaggedLvarValues;
 
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
-			EnterCriticalSection(&lvarValuesMutex);
+			if (!lvarsReady)
+				EnterCriticalSection(&lvarValuesMutex);
 			EnterCriticalSection(&lvarNamesMutex);
 			for (int i = 0; i < value_cda[pObjData->dwRequestID - EVENT_VALUES_RECEIVED]->getNoItems() && i + (1024 * (static_cast<unsigned long long>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) < lvarNames.size(); i++)
 			{
@@ -699,12 +704,14 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				lvarValues.at((1024 * (static_cast<std::vector<double, std::allocator<double>>::size_type>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) + i) = values[i].value;
 			}
 			LeaveCriticalSection(&lvarNamesMutex);
-			LeaveCriticalSection(&lvarValuesMutex);
+			if (!lvarsReady)
+				LeaveCriticalSection(&lvarValuesMutex);
 
 			// If all vars habe been received and this is the last values CDA ro be received, call the lvars-ready callback
 			if (lvarsReady && (pObjData->dwRequestID - EVENT_VALUES_RECEIVED + 1 == noValueCDAs))
 			{
 				LOG_DEBUG("Calling Lvar CDAs loaded callback function...");
+				LeaveCriticalSection(&lvarValuesMutex);
 				cdaCbFunction();
 				lvarsReady = FALSE;
 			}
