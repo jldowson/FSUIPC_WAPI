@@ -60,6 +60,9 @@ Logger::Logger(void (*loggerFunction)(const char* fmt))
 
 Logger::Logger(const char* baseLogFileName)
 {
+    // Initialize mutex - only used for file logging
+    InitializeCriticalSection(&m_Mutex);
+    
     if (!baseLogFileName)
     {
         m_LogLevel = LOG_LEVEL_INFO;
@@ -74,16 +77,13 @@ Logger::Logger(const char* baseLogFileName)
         const string logFileNamePrev = std::string(baseLogFileName) + "_prev.log";
         if (existsFile(logFileNamePrev)) std::remove(logFileNamePrev.c_str());
 
-        std::rename(m_logFileName.c_str(), logFileNamePrev.c_str());
+        (void)std::rename(m_logFileName.c_str(), logFileNamePrev.c_str());
     }
     m_File.open(m_logFileName.c_str(), ios::out|ios::app);
     m_LogLevel	= LOG_LEVEL_INFO;
     m_LogType	= FILE_LOG;
     loggerFunction = nullptr;
-    // Initialize mutex
-    InitializeCriticalSection(&m_Mutex);
-
-}
+ }
 
 Logger::~Logger()
 {

@@ -139,15 +139,14 @@ namespace CPlusPlusLogging
       private:
          void logIntoFile(std::string& data);
          void logOnConsole(std::string& data);
-         Logger(const Logger& obj) {}
          void operator=(const Logger& obj) {}
          bool existsFile(const std::string& baseLogFileName);
 
       private:
          static Logger*          m_Instance;
          std::ofstream           m_File;
-         LogLevel                m_LogLevel;
-         LogType                 m_LogType;
+         LogLevel                m_LogLevel = LOG_LEVEL_INFO;
+         LogType                 m_LogType = CONSOLE;
          std::string             m_logFileName;
          void (*loggerFunction)(const char* fmt);
          CRITICAL_SECTION        m_Mutex;

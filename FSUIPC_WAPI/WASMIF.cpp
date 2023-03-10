@@ -27,6 +27,7 @@ WASMIF* WASMIF::m_Instance = 0;
 int WASMIF::nextDefinitionID = 1; // 1 taken by config CDA
 Logger* pLogger = nullptr;
 static CONFIG_CDA currentConfigSet;
+boolean lvarsReady = FALSE;
 
 
 WASMIF::WASMIF() {
@@ -34,12 +35,21 @@ WASMIF::WASMIF() {
 	quit = 0;
 	noLvarCDAs = 0;
 	noHvarCDAs = 0;
+	noValueCDAs = 0;
 	lvarUpdateFrequency = 0;
 	InitializeCriticalSection(&lvarValuesMutex);
 	InitializeCriticalSection(&lvarNamesMutex);
 	InitializeCriticalSection(&hvarNamesMutex);
 	InitializeCriticalSection(&configMutex);
 	simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL; // = -1
+	cdaIdBank = nullptr;
+	for (int i = 0; i < MAX_NO_LVAR_CDAS; i++)
+		lvar_cdas[i] = NULL;
+	for (int i = 0; i < MAX_NO_HVAR_CDAS; i++)
+		hvar_cdas[i] = NULL;
+	for (int i = 0; i < MAX_NO_VALUE_CDAS; i++)
+		value_cda[i] = NULL;
+
 }
 
 WASMIF::~WASMIF() {}
@@ -156,16 +166,6 @@ void CALLBACK WASMIF::StaticRequestDataTimer(PVOID lpParameter, BOOLEAN TimerOrW
 	((WASMIF*)lpParameter)->RequestDataTimer();
 }
 
-void CALLBACK WASMIF::StaticLvarCbTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired) {
-	((WASMIF*)lpParameter)->LvarCbTimer();
-}
-
-void WASMIF::LvarCbTimer() {
-	lvarCbTimerHandle = NULL;
-	LOG_TRACE("Calling Lvar CDAs loaded callback function in LvarCbTimer...");
-	cdaCbFunction();
-}
-
 void WASMIF::ConfigTimer() {
 
 	if (!SUCCEEDED(SimConnect_RequestClientData(hSimConnect, 1, EVENT_CONFIG_RECEIVED, 1,
@@ -255,16 +255,16 @@ void WASMIF::end() {
 void WASMIF::SimConnectEnd() {
 	char szLogBuffer[256];
 	if (requestTimerHandle) {
-		DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
+		(void)DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
 		requestTimerHandle = nullptr;
 	}
 	if (configTimerHandle) {
-		DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
+		(void)DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
 		configTimerHandle = nullptr;
 	}
 
 	// Clear Client Data Definitions
-	// Drop existing CDAs
+	// Drop any existing lvar value CDAs
 	for (int i = 0; i < MAX_NO_VALUE_CDAS; i++) {
 		if (value_cda[i]) {
 			if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, value_cda[i]->getDefinitionId())))
@@ -278,41 +278,17 @@ void WASMIF::SimConnectEnd() {
 			}
 		}
 	}
-	for (int i = 0; i < noLvarCDAs; i++)
-	{
-		if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, lvar_cdas[i]->getDefinitionId())))
-		{
-			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing lvar data definition with id=%d", lvar_cdas[i]->getId());
-			LOG_ERROR(szLogBuffer);
-		}
-		else {
-			delete lvar_cdas[i];
-			lvar_cdas[i] = 0;
-		}
-	}
-	noLvarCDAs = 0;
-	for (int i = 0; i < noHvarCDAs; i++)
-	{
-		if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, hvar_cdas[i]->getDefinitionId())))
-		{
-			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing hvar data definition with id=%d", hvar_cdas[i]->getId());
-			LOG_ERROR(szLogBuffer);
-		}
-		else {
-			delete hvar_cdas[i];
-			hvar_cdas[i] = 0;
-		}
-	}
-	noHvarCDAs = 0;
+
 	delete cdaIdBank;
-	if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, 1)))
-	{
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing config data definition");
-		LOG_ERROR(szLogBuffer);
-	}
 
 	if (hSimConnect)
 	{
+		if (!SUCCEEDED(SimConnect_ClearClientDataDefinition(hSimConnect, 1)))
+		{
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error clearing config data definition");
+			LOG_ERROR(szLogBuffer);
+		}
+
 		SimConnect_Close(hSimConnect);
 		LOG_INFO("SimConnect_Close done");
 	}
@@ -349,7 +325,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
 			if (configTimerHandle) {
-				DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
+				(void)DeleteTimerQueueTimer(nullptr, configTimerHandle, nullptr);
 				configTimerHandle = nullptr;
 			}
 			else if (!memcmp(&currentConfigSet, configData, sizeof(CONFIG_CDA))) // We didn't request this - check it has changed
@@ -359,7 +335,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				break;
 			}
 			if (requestTimerHandle) {
-				DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
+				(void)DeleteTimerQueueTimer(nullptr, requestTimerHandle, nullptr);
 				requestTimerHandle = nullptr;
 			}
 
@@ -390,7 +366,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 			noLvarCDAs = 0;
 			noHvarCDAs = 0;
-			int noValueCDAs = 0;
+			noValueCDAs = 0;
 			memcpy(&currentConfigSet, configData, sizeof(CONFIG_CDA));
 
 			for (int i = 0; i < MAX_NO_LVAR_CDAS + MAX_NO_HVAR_CDAS + MAX_NO_VALUE_CDAS; i++)
@@ -506,6 +482,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			// Reset lvars received counter
 			noLvarCDAsReceived = 0;
 			LeaveCriticalSection(&configMutex);
+			lvarsReady = FALSE;
 			break;
 		}
 		case EVENT_LVARS_RECEIVED: // Allow for 70 distinct lvar CDAs
@@ -619,16 +596,8 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				delete lvar_cdas[cdaId];
 				lvar_cdas[cdaId] = 0;
 
-				if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL) {
-					// All lvar names received - call CDA update callback if registered
-					if (lvarCbTimerHandle != NULL)
-					{
-						DeleteTimerQueueTimer(nullptr, lvarCbTimerHandle, nullptr);
-						lvarCbTimerHandle = NULL;
-					}
-					CreateTimerQueueTimer(&lvarCbTimerHandle, nullptr, &WASMIF::StaticLvarCbTimer, this, 1000, 0, WT_EXECUTEDEFAULT);
-//					cdaCbFunction();
-				}
+				if (noLvarCDAsReceived == noLvarCDAs && cdaCbFunction != NULL)
+					lvarsReady = TRUE;
 			}
 			else {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_LVARS_RECEIVED but id not found:%d of %d: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
@@ -698,7 +667,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			// Check values match definition
 			if (value_cda[pObjData->dwRequestID - EVENT_VALUES_RECEIVED]->getDefinitionId() != pObjData->dwDefineID) break;
 			EnterCriticalSection(&lvarNamesMutex);
-			if (lvarNames.size() <= 1024*(pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) {
+			if (lvarNames.size() <= 1024 * (static_cast<unsigned long long>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+%d: Ignoring as we only have %llu lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
 					pObjData->dwRequestID - EVENT_VALUES_RECEIVED, lvarNames.size(), pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 				LOG_DEBUG(szLogBuffer);
@@ -716,21 +685,30 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
 			EnterCriticalSection(&lvarValuesMutex);
 			EnterCriticalSection(&lvarNamesMutex);
-			for (int i = 0; i < value_cda[pObjData->dwRequestID - EVENT_VALUES_RECEIVED]->getNoItems() && i+(1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) < lvarNames.size(); i++)
+			for (int i = 0; i < value_cda[pObjData->dwRequestID - EVENT_VALUES_RECEIVED]->getNoItems() && i + (1024 * (static_cast<unsigned long long>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) < lvarNames.size(); i++)
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i+ (1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)), values[i].value);
 				LOG_TRACE(szLogBuffer);
-				if (lvarValues.at((1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) + i) != values[i].value && lvarFlaggedForCallback.at((1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) + i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
+				if (lvarValues.at((1024 * (static_cast<std::vector<double, std::allocator<double>>::size_type>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) + i) != values[i].value && lvarFlaggedForCallback.at((1024 * (static_cast<std::vector<bool, std::allocator<bool>>::size_type>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) + i) && (lvarCbFunctionId != NULL || lvarCbFunctionName != NULL)) {
 					sprintf(szLogBuffer, "Flagging lvar for callback: id=%d", (1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) + i);
 					LOG_DEBUG(szLogBuffer);
 					flaggedLvarIds.push_back((1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) + i);
 					flaggedLvarValues.push_back(values[i].value);
-					flaggedLvarNames.push_back(lvarNames.at((1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) + i).c_str());
+					flaggedLvarNames.push_back(lvarNames.at((1024 * (static_cast<std::vector<std::string, std::allocator<std::string>>::size_type>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) + i).c_str());
 				}
-				lvarValues.at((1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)) + i) = values[i].value;
+				lvarValues.at((1024 * (static_cast<std::vector<double, std::allocator<double>>::size_type>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) + i) = values[i].value;
 			}
 			LeaveCriticalSection(&lvarNamesMutex);
 			LeaveCriticalSection(&lvarValuesMutex);
+
+			// If all vars habe been received and this is the last values CDA ro be received, call the lvars-ready callback
+			if (lvarsReady && (pObjData->dwRequestID - EVENT_VALUES_RECEIVED + 1 == noValueCDAs))
+			{
+				LOG_DEBUG("Calling Lvar CDAs loaded callback function...");
+				cdaCbFunction();
+				lvarsReady = FALSE;
+			}
+
 			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
 				// Add a terminating element
 				flaggedLvarIds.push_back(-1);
@@ -905,7 +883,7 @@ void WASMIF::setLvar(unsigned short id, const char* value) {
 void WASMIF::setLvar(unsigned short id, double value) {
 	char szLogBuffer[256];
 	DWORD dwLastID;
-	CDASETLVAR lvar;
+	CDASETLVAR lvar{};
 	lvar.id = id;
 	lvar.lvarValue = value;
 	if (!SUCCEEDED(SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar))) {
@@ -925,7 +903,7 @@ void WASMIF::setLvar(unsigned short id, double value) {
 
 
 void WASMIF::setLvar(unsigned short id, short value) {
-	DWORD param;
+	DWORD param = 0;
 	BYTE* p = (BYTE*)&param;
 
 	memcpy(p, &id, 2);
@@ -935,7 +913,7 @@ void WASMIF::setLvar(unsigned short id, short value) {
 
 void WASMIF::setLvar(unsigned short id, unsigned short value) {
 
-	DWORD param;
+	DWORD param = 0;
 	BYTE* p = (BYTE*)&param;
 
 	memcpy(p, &id, 2);
@@ -1029,7 +1007,7 @@ void WASMIF::setLvarS(DWORD param) {
 void WASMIF::executeCalclatorCode(const char* code) {
 	char szLogBuffer[MAX_CALC_CODE_SIZE + 64];
 	DWORD dwLastID;
-	CDACALCCODE ccode;
+	CDACALCCODE ccode{};
 
 	// First, check size of provided code
 	if (code == NULL || strlen(code) > MAX_CALC_CODE_SIZE - 1) {

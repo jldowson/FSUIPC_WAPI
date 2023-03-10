@@ -9,7 +9,7 @@
 #include "ClientDataArea.h"
 #include "CDAIdBank.h"
 
-#define WAPI_VERSION			"1.0.0"
+#define WAPI_VERSION			"1.0.2"
 
 using namespace ClientDataAreaMSFS;
 using namespace CDAIdBankMSFS;
@@ -75,7 +75,6 @@ class WASMIF
 		// Internal functions that need to be public. Do not use.
 		static void CALLBACK MyDispatchProc(SIMCONNECT_RECV* pData, DWORD cbData, void* pContext);
 		static void CALLBACK StaticConfigTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
-		static void CALLBACK StaticLvarCbTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 		static void CALLBACK StaticRequestDataTimer(PVOID lpParameter, BOOLEAN TimerOrWaitFired);
 
 	protected:
@@ -85,7 +84,6 @@ class WASMIF
 		static DWORD WINAPI StaticSimConnectThreadStart(void* Param);
 		void DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData);
 		void ConfigTimer();
-		void LvarCbTimer();
 		void RequestDataTimer();
 		DWORD WINAPI SimConnectStart();
 		void SimConnectEnd();
@@ -98,7 +96,7 @@ class WASMIF
 		HANDLE  hSimConnect;
 		volatile HANDLE hThread = nullptr;
 		HANDLE hSimEventHandle = nullptr;
-		int quit, noLvarCDAs, noHvarCDAs, lvarUpdateFrequency;
+		int quit, noLvarCDAs, noHvarCDAs, noValueCDAs, lvarUpdateFrequency;
 		HANDLE configTimerHandle = nullptr;
 		HANDLE lvarCbTimerHandle = nullptr;
 		HANDLE requestTimerHandle = nullptr;
