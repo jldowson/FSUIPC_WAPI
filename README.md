@@ -39,5 +39,5 @@ A demo test client using this API is available here: https://github.com/jldowson
 For any problems, questions or requests, please use the FSUIPC7 support forum:
 &nbsp;&nbsp;&nbsp;&nbsp;https://forum.simflight.com/forum/183-fsuipc7-msfs/<br>
  
-John Dowson
+John Dowson<br>
 19th May 2021
