@@ -2,15 +2,15 @@
 API for connection to the FSUIPC WASM Module
 
 FSUIPC_WAPI is a client-side API library for communication with the FSUIPC WASM module.
-This allows for the retrieval/listing of lbars/hvars, for the setting of lvars and the activation of hvars.
+This allows for the retrieval/listing of lvars and hvars, for the setting/changing the value of lvars, the activation of hvars and the execution of calculator code.<br>
 
 The WASMIF class is the main interface. To use, first instantiate a WASMIF object:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>WASMIF* WASMPtr = WASMIF::getInstance();</code><br>
-You can also provide your own logging function to the <i>getInstance</i> method if you don't want to use the default log dile, which is <i>FSUIPC_WAPI.log</i>.<br>
+You can also provide your own logging function to the <i>getInstance</i> method if you don't want to use the default log file, which is <i>FSUIPC_WAPI.log</i>.<br>
 
 Then start the service:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>WASMPtr->start();</code><br>
-
+Once the service is started, it will connect to the FSUIPC WASM module when available.
 You can then get/set/list lvars and list/activate hvars using the provided member functions, e,g.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>WASMPtr->getLvarValues(map<string, double> lvars);</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>WASMPtr->getHvarList(unordered_map<int, string> hvars);</code><br>
