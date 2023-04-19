@@ -25,8 +25,8 @@ You can register for a callback function to be called when the lvars/hvars have 
 You should do this before starting the service.<br>
   
 You can also register for a callback to be received when lvars have been updated, using the following functions:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));</code><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void (*callbackFunction)(const char* lvarName[], double newValue[]));</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void* (callbackFunction)(int id[], double newValue[]));</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void* (callbackFunction)(const char* lvarName[], double newValue[]));</code><br>
 You can do this at any time, but best done before starting the service. Once this callback has been registered, you can flag individual lvars to have this callback called when their value changes using one of the following methods:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void flagLvarForUpdateCallback(int lvarId);</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void flagLvarForUpdateCallback(const char* lvarName);</code><br>
