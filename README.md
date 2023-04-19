@@ -25,19 +25,19 @@ You can register for a callback function to be called when the lvars/hvars have 
 You should do this before starting the service.<br>
   
 You can also register for a callback to be received when lvars have been updated, using the following functions:<br>
-&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void* (callbackFunction)(int id[], double newValue[]));</code><br>
-&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void* (callbackFunction)(const char* lvarName[], double newValue[]));</code><br>
-You can do this at any time, but best done before starting the service. Once this callback has been registered, you can flag individual lvars to have this callback called when their value changes using ine of the following methods:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void (*callbackFunction)(int id[], double newValue[]));</code><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<code>void registerLvarUpdateCallback(void (*callbackFunction)(const char* lvarName[], double newValue[]));</code><br>
+You can do this at any time, but best done before starting the service. Once this callback has been registered, you can flag individual lvars to have this callback called when their value changes using one of the following methods:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void flagLvarForUpdateCallback(int lvarId);</code><br>
 &nbsp;&nbsp;&nbsp;&nbsp;<code>void flagLvarForUpdateCallback(const char* lvarName);</code><br>
 Note that this is best done in the callback registered with the <i>registerUpdateCallback</i> method.<br>
 One callback will be received per CDA (if data held in that CDA that has been flagged has changed), and the argument list provided to the callback (id or name and value) will contain a terminating element of -1 (for id based callbask) or NULL (for lvar name based callback).
-Note also that if you register for both callbacks by id and callbacks by name, both callback functions will be called.
+Note also that if you register for both callbacks by id and callbacks by name, both callback functions will be called.<br>
   
-A demo test client using this API is available here: https://github.com/jldowson/WASMClient
+A demo test client using this API is available here: https://github.com/jldowson/WASMClient<br>
 
 For any problems, questions or requests, please use the FSUIPC7 support forum:
-&nbsp;&nbsp;&nbsp;&nbsp;https://forum.simflight.com/forum/183-fsuipc7-msfs/
+&nbsp;&nbsp;&nbsp;&nbsp;https://forum.simflight.com/forum/183-fsuipc7-msfs/<br>
  
 John Dowson
 19th May 2021
