@@ -1036,7 +1036,7 @@ void WASMIF::executeCalclatorCode(const char* code) {
 		// Now send an empty request. This is needed to clear the CDA in case the same calc code is resent
 		strcpy_s(ccode.calcCode, 2, "1");
 		SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode);
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calculator code sent: %s", ccode);
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calculator code sent: %s", code);
 		LOG_DEBUG(szLogBuffer);
 	}
 }
