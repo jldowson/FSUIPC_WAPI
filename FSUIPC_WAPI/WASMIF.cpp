@@ -707,7 +707,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			if (!lvarsReady)
 				LeaveCriticalSection(&lvarValuesMutex);
 
-			// If all vars habe been received and this is the last values CDA ro be received, call the lvars-ready callback
+			// If all vars habe been received and this is the last values CDA to be received, call the lvars-ready callback
 			if (lvarsReady && (pObjData->dwRequestID - EVENT_VALUES_RECEIVED + 1 == noValueCDAs))
 			{
 				LOG_DEBUG("Calling Lvar CDAs loaded callback function...");
@@ -880,7 +880,7 @@ void WASMIF::setLvar(unsigned short id, const char* value) {
 		}
 		else { // use double
 			setLvar(id, converted);
-			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as double: %f", converted);
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Setting lvar value as double: %lf", converted);
 			LOG_DEBUG(szLogBuffer);
 		}
 	}
@@ -901,6 +901,8 @@ void WASMIF::setLvar(unsigned short id, double value) {
 		SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar set Client Data Area updated [requestID=%d]", dwLastID);
 		LOG_TRACE(szLogBuffer);
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar update request sent via CDA: id=%d, value=%lf", lvar.id, lvar.lvarValue);
+		LOG_DEBUG(szLogBuffer);
 		// Now send an empty request. This is needed to clear the CDA in case the same lvar value is resent
 		lvar.id = -1;
 		lvar.lvarValue = 0;
