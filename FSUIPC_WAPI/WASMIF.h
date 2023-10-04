@@ -9,7 +9,7 @@
 #include "ClientDataArea.h"
 #include "CDAIdBank.h"
 
-#define WAPI_VERSION			"1.0.2"
+#define WAPI_VERSION			"1.0.3"
 
 using namespace ClientDataAreaMSFS;
 using namespace CDAIdBankMSFS;
@@ -110,7 +110,7 @@ class WASMIF
 		vector<string> hvarNames;
 		CDAIdBank* cdaIdBank;
 		int simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL;
-		CRITICAL_SECTION lvarValuesMutex, lvarNamesMutex, hvarNamesMutex, configMutex;
+		CRITICAL_SECTION lvarValuesMutex, lvarNamesMutex, hvarNamesMutex, configMutex, ccodeMutex;
 		void (*cdaCbFunction)(void) = NULL;
 		void (*lvarCbFunctionId)(int id[], double newValue[]) = NULL;
 		void (*lvarCbFunctionName)(const char* lvarName[], double newValue[]) = NULL;

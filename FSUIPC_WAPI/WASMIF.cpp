@@ -41,6 +41,7 @@ WASMIF::WASMIF() {
 	InitializeCriticalSection(&lvarNamesMutex);
 	InitializeCriticalSection(&hvarNamesMutex);
 	InitializeCriticalSection(&configMutex);
+	InitializeCriticalSection(&ccodeMutex);
 	simConnection = SIMCONNECT_OPEN_CONFIGINDEX_LOCAL; // = -1
 	cdaIdBank = nullptr;
 	for (int i = 0; i < MAX_NO_LVAR_CDAS; i++)
@@ -893,6 +894,7 @@ void WASMIF::setLvar(unsigned short id, double value) {
 	CDASETLVAR lvar{};
 	lvar.id = id;
 	lvar.lvarValue = value;
+	EnterCriticalSection(&ccodeMutex);
 	if (!SUCCEEDED(SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar))) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %d=%f", lvar.id, lvar.lvarValue);
 		LOG_ERROR(szLogBuffer);
@@ -908,6 +910,7 @@ void WASMIF::setLvar(unsigned short id, double value) {
 		lvar.lvarValue = 0;
 		SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar);
 	}
+	LeaveCriticalSection(&ccodeMutex);
 }
 
 
@@ -1017,6 +1020,8 @@ void WASMIF::executeCalclatorCode(const char* code) {
 	char szLogBuffer[MAX_CALC_CODE_SIZE + 64];
 	DWORD dwLastID;
 	CDACALCCODE ccode{};
+	HRESULT result;
+
 
 	// First, check size of provided code
 	if (code == NULL || strlen(code) > MAX_CALC_CODE_SIZE - 1) {
@@ -1025,10 +1030,14 @@ void WASMIF::executeCalclatorCode(const char* code) {
 		LOG_ERROR(szLogBuffer);
 		return;
 	}
+
 	strncpy_s(ccode.calcCode, sizeof(ccode.calcCode), code, MAX_CALC_CODE_SIZE);
 	ccode.calcCode[MAX_CALC_CODE_SIZE - 1] = '\0';
-	if (!SUCCEEDED(SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode))) {
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code: '%s'", ccode.calcCode);
+
+	EnterCriticalSection(&ccodeMutex);
+
+	if (!SUCCEEDED(result = SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode))) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code [%d]: '%s'", result, ccode.calcCode);
 		LOG_ERROR(szLogBuffer);
 	}
 	else {
@@ -1041,6 +1050,7 @@ void WASMIF::executeCalclatorCode(const char* code) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calculator code sent: %s", code);
 		LOG_DEBUG(szLogBuffer);
 	}
+	LeaveCriticalSection(&ccodeMutex);
 }
 
 
