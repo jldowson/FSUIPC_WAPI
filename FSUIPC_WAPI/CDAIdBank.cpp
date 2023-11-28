@@ -56,15 +56,16 @@ pair<string, int> CDAIdBank::getId(int size, string name) {
 		}
 
 		// Finally, Create the client data if it doesn't already exist
-		if (!SUCCEEDED(SimConnect_CreateClientData(hSimConnect, nextId, size, SIMCONNECT_CREATE_CLIENT_DATA_FLAG_READ_ONLY))) {
-			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error creating client data area with id=%d and size=%d", nextId, size);
-			LOG_ERROR(szLogBuffer);
-		}
-		else {
-			SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
-			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Client data area created with id=%d (size=%d) [requestID=%lu]", nextId, size, dwLastID);
-			LOG_DEBUG(szLogBuffer);
-		}
+// Not needed? Created by te WASM...
+//		if (!SUCCEEDED(SimConnect_CreateClientData(hSimConnect, nextId, size, SIMCONNECT_CREATE_CLIENT_DATA_FLAG_READ_ONLY))) {
+//			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error creating client data area with id=%d and size=%d", nextId, size);
+//			LOG_ERROR(szLogBuffer);
+//		}
+//		else {
+//			SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
+//			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Client data area created with id=%d (size=%d) [requestID=%lu]", nextId, size, dwLastID);
+//			LOG_DEBUG(szLogBuffer);
+//		}
 		nextId++;
 
 
