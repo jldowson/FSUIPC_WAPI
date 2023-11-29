@@ -23,6 +23,7 @@ enum WASM_EVENT_ID {
 	EVENT_HVARS_RECEIVED = 100, // Start event number of events received when an hvar name CDA have been updated. Allow for MAX_NO_HVAR_CDAS (4)
 };
 
+
 WASMIF* WASMIF::m_Instance = 0;
 int WASMIF::nextDefinitionID = 1; // 1 taken by config CDA
 Logger* pLogger = nullptr;
@@ -91,8 +92,6 @@ DWORD WINAPI WASMIF::SimConnectStart() {
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_LIST_LVARS, LIST_LVARS_EVENT); // getEventString(EVENT_LIST_LVARS));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_RELOAD, RELOAD_EVENT); // getEventString(EVENT_RELOAD));
 	hr = SimConnect_MapClientEventToSimEvent(hSimConnect, EVENT_SET_LVARS, SET_LVAR_SIGNED_EVENT); // getEventString(EVENT_SET_LVARS));
-	
-	hr = SimConnect_SetNotificationGroupPriority(hSimConnect, 1, SIMCONNECT_GROUP_PRIORITY_HIGHEST);
 
 	// Now register Client Data Area
 	if (!SUCCEEDED(SimConnect_MapClientDataNameToID(hSimConnect, CONFIG_CDA_NAME, CDAId++)))
@@ -321,8 +320,16 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 		case EVENT_CONFIG_RECEIVED:
 		{
+			if (lvarsReady) // Need to release lock on values
+			{
+				lvarsReady = FALSE;
+				LeaveCriticalSection(&lvarValuesMutex);
+//				LOG_DEBUG("###### lvM lock released (config received, lvarsReady flag set - config received before last one fully processed)");
+			}
 			// Need lock to make sure lvars are not being received
+//			LOG_DEBUG("### Requesting cM lock...");
 			EnterCriticalSection(&configMutex);
+//			LOG_DEBUG("### cM lock acquired");
 
 			CONFIG_CDA* configData = (CONFIG_CDA*)&(pObjData->dwData);
 			if (configTimerHandle) {
@@ -333,6 +340,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			{
 				LOG_TRACE("Ignoring EVENT_CONFIG_RECEIVED event as no change");
 				LeaveCriticalSection(&configMutex);
+//				LOG_DEBUG("### cM lock released");
 				break;
 			}
 			if (requestTimerHandle) {
@@ -341,16 +349,25 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 
 			// Clear current lvar/hvar names and lvar values - these will be rebuilt when we receive the data
+//			LOG_DEBUG("### Requesting lvM lock...");
 			EnterCriticalSection(&lvarValuesMutex);
+//			LOG_DEBUG("### lvM lock acquired");
+//			LOG_DEBUG("### Requesting lnM lock...");
 			EnterCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("### lnM lock acquired");
+//			LOG_DEBUG("### Requesting hnM lock...");
 			EnterCriticalSection(&hvarNamesMutex);
+//			LOG_DEBUG("### hnM lock acquired");
 			lvarNames.clear();
 			hvarNames.clear();
 			lvarFlaggedForCallback.clear();
 			lvarValues.clear();
 			LeaveCriticalSection(&hvarNamesMutex);
+//			LOG_DEBUG("### hnM lock released");
 			LeaveCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("### lnM lock released");
 			LeaveCriticalSection(&lvarValuesMutex);
+//			LOG_DEBUG("### lvM lock released");
 
 			// Drop existing value CDAs
 			for (int i = 0; i < MAX_NO_VALUE_CDAS; i++) {
@@ -384,6 +401,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_TRACE("SIMCONNECT_RECV_ID_CLIENT_DATA received: Empty EVENT_CONFIG_RECEIVED - requesting again");
 				CreateTimerQueueTimer(&configTimerHandle, nullptr, &WASMIF::StaticConfigTimer, this, 0, 1000, WT_EXECUTEDEFAULT);
 				LeaveCriticalSection(&configMutex);
+//				LOG_DEBUG("### cM lock released");
 				break;
 			}
 
@@ -483,6 +501,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			// Reset lvars received counter
 			noLvarCDAsReceived = 0;
 			LeaveCriticalSection(&configMutex);
+//			LOG_DEBUG("### cM lock released");
 			lvarsReady = FALSE;
 			break;
 		}
@@ -559,7 +578,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 //		case EVENT_LVARS_RECEIVED + 70:
 		{
 			// Need lock to make sure new config data is not processed when we are adding lvars
+//			LOG_DEBUG("### Requesting cM lock...");
 			EnterCriticalSection(&configMutex);
+//			LOG_DEBUG("### cM lock acquired");
 			CDAName* lvars = (CDAName*)&(pObjData->dwData);
 			// Find id of CDA
 			int cdaId = 0;
@@ -579,12 +600,18 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				{
 					sprintf_s(szLogBuffer, sizeof(szLogBuffer), "LVAR Data: name='%s'", lvars[i].name);
 					LOG_TRACE(szLogBuffer);
+//					LOG_DEBUG("### Requesting lvM lock...");
 					EnterCriticalSection(&lvarValuesMutex);
+//					LOG_DEBUG("### lvM lock acquired");
+//					LOG_DEBUG("### Requesting lnM lock...");
 					EnterCriticalSection(&lvarNamesMutex);
+//					LOG_DEBUG("### lnM lock acquired");
 					lvarNames.push_back(string(lvars[i].name));
 					lvarValues.push_back(0.0);
 					LeaveCriticalSection(&lvarNamesMutex);
+//					LOG_DEBUG("### lnM lock released");
 					LeaveCriticalSection(&lvarValuesMutex);
+//					LOG_DEBUG("### lvM lock released");
 					lvarFlaggedForCallback.push_back(FALSE);
 				}
 				// Drop lvar CDA after processing
@@ -601,7 +628,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				{
 					lvarsReady = TRUE;
 					// Lock lvar values until all initial values received
+//					LOG_DEBUG("#### Requesting lvM lock...");
 					EnterCriticalSection(&lvarValuesMutex);
+//					LOG_DEBUG("#### lvM lock acquired");
 				}
 			}
 			else {
@@ -612,6 +641,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_ERROR(szLogBuffer);
 			}
 			LeaveCriticalSection(&configMutex);
+//			LOG_DEBUG("### cM lock released");
 			break;
 		}
 		case EVENT_HVARS_RECEIVED:
@@ -619,14 +649,18 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		case EVENT_HVARS_RECEIVED+2:
 		case EVENT_HVARS_RECEIVED+3:
 		{
+//			LOG_DEBUG("### Requesting cM lock...");
 			EnterCriticalSection(&configMutex);
+//			LOG_DEBUG("### cM lock acquired");
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_HVARS_RECEIVED: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_DEBUG(szLogBuffer);
 			CDAName* hvars = (CDAName*)&(pObjData->dwData);
 			// Find id of CDA
 			int cdaId = 0;
+//			LOG_DEBUG("### Requesting hnM lock...");
 			EnterCriticalSection(&hvarNamesMutex);
+//			LOG_DEBUG("### hnM lock acquired");
 			for (cdaId = 0; cdaId < MAX_NO_HVAR_CDAS; cdaId++)
 			{
 				if (hvar_cdas[cdaId] != NULL && hvar_cdas[cdaId]->getDefinitionId() == pObjData->dwDefineID) break;
@@ -654,7 +688,9 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				LOG_ERROR(szLogBuffer);
 			}
 			LeaveCriticalSection(&hvarNamesMutex);
+//			LOG_DEBUG("### hnM lock released");
 			LeaveCriticalSection(&configMutex);
+//			LOG_DEBUG("### cM lock released");
 			break;
 		}
 
@@ -671,15 +707,19 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 		{
 			// Check values match definition
 			if (value_cda[pObjData->dwRequestID - EVENT_VALUES_RECEIVED]->getDefinitionId() != pObjData->dwDefineID) break;
+//			LOG_DEBUG("#### Requesting lnM lock...");
 			EnterCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("#### lnM lock acquired");
 			if (lvarNames.size() <= 1024 * (static_cast<unsigned long long>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) {
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+%d: Ignoring as we only have %llu lvars (dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d)",
 					pObjData->dwRequestID - EVENT_VALUES_RECEIVED, lvarNames.size(), pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 				LOG_DEBUG(szLogBuffer);
 				LeaveCriticalSection(&lvarNamesMutex);
+//				LOG_DEBUG("### lnM lock released");
 				break;
 			}
 			LeaveCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("### lnM lock released");
 			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "EVENT_VALUES_RECEIVED+%d: dwObjectID=%d, dwDefineID=%d, dwDefineCount=%d, dwentrynumber=%d, dwoutof=%d",
 				pObjData->dwRequestID - EVENT_VALUES_RECEIVED, pObjData->dwObjectID, pObjData->dwDefineID, pObjData->dwDefineCount, pObjData->dwentrynumber, pObjData->dwoutof);
 			LOG_TRACE(szLogBuffer);
@@ -689,8 +729,14 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 
 			CDAValue* values = (CDAValue*)&(pObjData->dwData);
 			if (!lvarsReady)
+			{
+//				LOG_DEBUG("##### Requesting lvM lock...");
 				EnterCriticalSection(&lvarValuesMutex);
+//				LOG_DEBUG("#### lvM lock acquired");
+			}
+//			LOG_DEBUG("##### Requesting lnM lock...");
 			EnterCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("#### lnM lock acquired");
 			for (int i = 0; i < value_cda[pObjData->dwRequestID - EVENT_VALUES_RECEIVED]->getNoItems() && i + (1024 * (static_cast<unsigned long long>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) < lvarNames.size(); i++)
 			{
 				sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Lvar value: ID=%03d, value=%lf", i+ (1024 * (pObjData->dwRequestID - EVENT_VALUES_RECEIVED)), values[i].value);
@@ -705,19 +751,29 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				lvarValues.at((1024 * (static_cast<std::vector<double, std::allocator<double>>::size_type>(pObjData->dwRequestID) - EVENT_VALUES_RECEIVED)) + i) = values[i].value;
 			}
 			LeaveCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("### lnM lock released");
 			if (!lvarsReady)
+			{
 				LeaveCriticalSection(&lvarValuesMutex);
+//				LOG_DEBUG("##### lvM lock released");
+			}
 
-			// If all vars habe been received and this is the last values CDA to be received, call the lvars-ready callback
+			// If all vars have been received and this is the last values CDA to be received, call the lvars-ready callback
 			if (lvarsReady && (pObjData->dwRequestID - EVENT_VALUES_RECEIVED + 1 == noValueCDAs))
 			{
-				LOG_DEBUG("Calling Lvar CDAs loaded callback function...");
 				LeaveCriticalSection(&lvarValuesMutex);
-				cdaCbFunction();
+//				LOG_DEBUG("####### lvM lock released");
+				if (cdaCbFunction != NULL)
+				{
+					LOG_DEBUG("Calling Lvar CDAs loaded callback function...");
+					cdaCbFunction();
+//					LOG_DEBUG("Callback function complete");
+				}
 				lvarsReady = FALSE;
 			}
 
 			if (lvarCbFunctionId != NULL && flaggedLvarIds.size()) {
+				LOG_TRACE("Adding a terminating element for lvarCbFunction");
 				// Add a terminating element
 				flaggedLvarIds.push_back(-1);
 				flaggedLvarValues.push_back(-1.0);
@@ -725,6 +781,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 			}
 			else if (lvarCbFunctionName != NULL && flaggedLvarIds.size()) {
 				// Add a terminating element
+				LOG_TRACE("Adding a terminating element for lvarCbFunctionName");
 				flaggedLvarNames.push_back(NULL);
 				if (lvarCbFunctionId == NULL) {
 					flaggedLvarValues.push_back(-1.0);
@@ -732,6 +789,7 @@ void WASMIF::DispatchProc(SIMCONNECT_RECV* pData, DWORD cbData) {
 				lvarCbFunctionName(flaggedLvarNames.data(), flaggedLvarValues.data());
 
 			}
+			LOG_TRACE("Values received event completed");
 			break;
 		}
 
@@ -809,14 +867,18 @@ int WASMIF::getLvarUpdateFrequency() {
 
 
 double WASMIF::getLvar(int lvarID) {
+//	LOG_DEBUG("# Requesting lvM lock...");
 	EnterCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock acquired");
 	if (lvarID < 0 || lvarID >= lvarValues.size())
 	{
 		LeaveCriticalSection(&lvarValuesMutex);
+//		LOG_DEBUG("# lvM lock released");
 		return NULL;
 	}
 	double result = lvarValues.at(lvarID);
 	LeaveCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock released");
 
 	return result;
 }
@@ -824,27 +886,39 @@ double WASMIF::getLvar(int lvarID) {
 
 double WASMIF::getLvar(const char* lvarName) {
 	int lvarId;
+//	LOG_DEBUG("# Requesting lvM lock...");
 	EnterCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock acquired");
+//	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock acquired");
 	for (lvarId = 0; lvarId < lvarNames.size(); lvarId++)
 		if (!strcmp(lvarName, lvarNames.at(lvarId).c_str())) break;
 
 	double result = lvarId < lvarValues.size() ? lvarValues.at(lvarId) : 0.0;
 	LeaveCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock released");
 	LeaveCriticalSection(&lvarValuesMutex);
+	LOG_DEBUG("# lvM lock released");
 
 	return result;
 }
 
 void WASMIF::getLvarValues(map<string, double >& returnMap) {
 
+//	LOG_DEBUG("# Requesting lvM lock...");
 	EnterCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock acquired");
+//	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock acquired");
 	for (int lvarId = 0; lvarId < lvarNames.size(); lvarId++) {
 		returnMap.insert(make_pair(lvarNames.at(lvarId), lvarValues.at(lvarId)));
 	}
 	LeaveCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock released");
 	LeaveCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock released");
 }
 
 
@@ -894,7 +968,12 @@ void WASMIF::setLvar(unsigned short id, double value) {
 	CDASETLVAR lvar{};
 	lvar.id = id;
 	lvar.lvarValue = value;
+//	LOG_DEBUG("# Requesting cM lock...");
+	EnterCriticalSection(&configMutex);
+//	LOG_DEBUG("# cM lock acquired");
+//	LOG_DEBUG("# Requesting ccM lock...");
 	EnterCriticalSection(&ccodeMutex);
+//	LOG_DEBUG("# ccM lock acquired");
 	if (!SUCCEEDED(SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar))) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data lvar value: %d=%f", lvar.id, lvar.lvarValue);
 		LOG_ERROR(szLogBuffer);
@@ -911,6 +990,9 @@ void WASMIF::setLvar(unsigned short id, double value) {
 		SimConnect_SetClientData(hSimConnect, 2, 2, 0, 0, sizeof(CDASETLVAR), &lvar);
 	}
 	LeaveCriticalSection(&ccodeMutex);
+//	LOG_DEBUG("# ccM lock released");
+	LeaveCriticalSection(&configMutex);
+//	LOG_DEBUG("# cM lock released");
 }
 
 
@@ -1034,7 +1116,12 @@ void WASMIF::executeCalclatorCode(const char* code) {
 	strncpy_s(ccode.calcCode, sizeof(ccode.calcCode), code, MAX_CALC_CODE_SIZE);
 	ccode.calcCode[MAX_CALC_CODE_SIZE - 1] = '\0';
 
+//	LOG_DEBUG("# Requesting cM lock...");
+	EnterCriticalSection(&configMutex);
+//	LOG_DEBUG("# cM lock acquired");
+//	LOG_DEBUG("# Requesting ccM lock...");
 	EnterCriticalSection(&ccodeMutex);
+//	LOG_DEBUG("# ccM lock acquired");
 
 	if (!SUCCEEDED(result = SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode))) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code [%d]: '%s'", result, ccode.calcCode);
@@ -1051,13 +1138,20 @@ void WASMIF::executeCalclatorCode(const char* code) {
 		LOG_DEBUG(szLogBuffer);
 	}
 	LeaveCriticalSection(&ccodeMutex);
+//	LOG_DEBUG("# ccM lock released");
+	LeaveCriticalSection(&configMutex);
+//	LOG_DEBUG("# cM lock released");
 }
 
 
 void WASMIF::logLvars() {
 	char szLogBuffer[256];
+//	LOG_DEBUG("# Requesting lvM lock...");
 	EnterCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock acquired");
+//	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock acquired");
 	sprintf(szLogBuffer, "We have %03llu lvars: ", lvarNames.size());
 	LOG_INFO(szLogBuffer);
 	for (int i = 0; i < lvarNames.size(); i++) {
@@ -1065,16 +1159,20 @@ void WASMIF::logLvars() {
 		LOG_INFO(szLogBuffer);
 	}
 	LeaveCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock released");
 	LeaveCriticalSection(&lvarValuesMutex);
+//	LOG_DEBUG("# lvM lock released");
 }
 
-
 void WASMIF::getLvarList(unordered_map<int, string >& returnMap) {
+//	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock acquired");
 	for (int i = 0; i < lvarNames.size(); i++) {
 		returnMap.insert(make_pair(i, lvarNames.at(i)));
 	}
 	LeaveCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock released");
 }
 
 
@@ -1113,63 +1211,83 @@ void WASMIF::setHvar(const char* hvarName) {
 
 void WASMIF::logHvars() {
 	char szLogBuffer[256];
+//	LOG_DEBUG("# Requesting hnM lock...");
 	EnterCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock acquired");
 	for (int i = 0; i < hvarNames.size(); i++) {
 		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "ID=%03d %s", i, hvarNames.at(i).c_str());
 		LOG_INFO(szLogBuffer);
 	}
 	LeaveCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock released");
 }
 
 
 void WASMIF::getHvarList(unordered_map<int, string >& returnMap) {
+//	LOG_DEBUG("# Requesting hnM lock...");
 	EnterCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock acquired");
 	for (int i = 0; i < hvarNames.size(); i++) {
 		returnMap.insert(make_pair(i, hvarNames.at(i)));
 	}
 	LeaveCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock released");
 }
 
 int WASMIF::getLvarIdFromName(const char* lvarName) {
+//	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock acquired");
 	for (int i = 0; i < lvarNames.size(); i++) {
 		if (lvarNames.at(i) == string(lvarName))
 		{
 			LeaveCriticalSection(&lvarNamesMutex);
+//			LOG_DEBUG("# lnM lock released");
 			return i;
 		}
 	}
 	LeaveCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock released");
 	return -1;
 }
 
 void WASMIF::getLvarNameFromId(int id, char* name) {
+//	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock acquired");
 	if (id >= 0 && id < lvarNames.size())
 		strcpy_s(name, strlen(lvarNames.at(id).c_str())+1, lvarNames.at(id).c_str());
 	else name = NULL;
 	LeaveCriticalSection(&lvarNamesMutex);
+//	LOG_DEBUG("# lnM lock released");
 }
 
 int WASMIF::getHvarIdFromName(const char* hvarName) {
+//	LOG_DEBUG("# Requesting hnM lock...");
 	EnterCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock acquired");
 	for (int i = 0; i < hvarNames.size(); i++) {
 		if (hvarNames.at(i) == string(hvarName))
 		{
 			LeaveCriticalSection(&hvarNamesMutex);
+//			LOG_DEBUG("# hnM lock released");
 			return i;
 		}
 	}
 	LeaveCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock released");
 	return -1;
 }
 
 void WASMIF::getHvarNameFromId(int id, char* name) {
+//	LOG_DEBUG("# Requesting hnM lock...");
 	EnterCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock acquired");
 	if (id >= 0 && id < hvarNames.size())
 		strcpy_s(name, strlen(hvarNames.at(id).c_str()) + 1, hvarNames.at(id).c_str());
 	else name[0] = 0;
 	LeaveCriticalSection(&hvarNamesMutex);
+//	LOG_DEBUG("# hnM lock released");
 }
 
 bool WASMIF::createLvar(const char* lvarName, double value) {
