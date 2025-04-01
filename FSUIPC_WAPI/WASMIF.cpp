@@ -1,10 +1,13 @@
+#include "Logger.h"
 #include "WASMIF.h"
+#include <cmath>
+#include <iomanip>
 #include <SimConnect.h>
 #include <sstream>
-#include <iomanip>
-#include <cmath>
-#include "Logger.h"
 
+using namespace std;
+#include <iostream>
+#include <algorithm>
 
 using namespace CPlusPlusLogging;
 
@@ -1234,12 +1237,21 @@ void WASMIF::getHvarList(unordered_map<int, string >& returnMap) {
 //	LOG_DEBUG("# hnM lock released");
 }
 
+bool compareStrings(string first, string second) {
+	transform(first.begin(), first.end(), first.begin(), ::tolower);
+	transform(second.begin(), second.end(), second.begin(), ::tolower);
+
+	return first == second;
+}
+
+
 int WASMIF::getLvarIdFromName(const char* lvarName) {
 //	LOG_DEBUG("# Requesting lnM lock...");
 	EnterCriticalSection(&lvarNamesMutex);
 //	LOG_DEBUG("# lnM lock acquired");
 	for (int i = 0; i < lvarNames.size(); i++) {
-		if (lvarNames.at(i) == string(lvarName))
+//		if (lvarNames.at(i) == string(lvarName))
+		if (compareStrings(lvarNames.at(i), string(lvarName)))
 		{
 			LeaveCriticalSection(&lvarNamesMutex);
 //			LOG_DEBUG("# lnM lock released");
@@ -1267,7 +1279,8 @@ int WASMIF::getHvarIdFromName(const char* hvarName) {
 	EnterCriticalSection(&hvarNamesMutex);
 //	LOG_DEBUG("# hnM lock acquired");
 	for (int i = 0; i < hvarNames.size(); i++) {
-		if (hvarNames.at(i) == string(hvarName))
+//		if (hvarNames.at(i) == string(hvarName))
+		if (compareStrings(hvarNames.at(i), string(hvarName)))
 		{
 			LeaveCriticalSection(&hvarNamesMutex);
 //			LOG_DEBUG("# hnM lock released");
