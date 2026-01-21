@@ -1104,7 +1104,7 @@ void WASMIF::setLvarS(DWORD param) {
 void WASMIF::executeCalclatorCode(const char* code) {
 	char szLogBuffer[MAX_CALC_CODE_SIZE + 64];
 	DWORD dwLastID;
-	CDACALCCODE ccode{};
+	CDACALCCODE ccode;
 	HRESULT result;
 
 
@@ -1116,7 +1116,7 @@ void WASMIF::executeCalclatorCode(const char* code) {
 		return;
 	}
 
-	strncpy_s(ccode.calcCode, sizeof(ccode.calcCode), code, MAX_CALC_CODE_SIZE);
+	strncpy_s(ccode.calcCode, sizeof(ccode.calcCode), code, MAX_CALC_CODE_SIZE-1);
 	ccode.calcCode[MAX_CALC_CODE_SIZE - 1] = '\0';
 
 //	LOG_DEBUG("# Requesting cM lock...");
@@ -1126,14 +1126,37 @@ void WASMIF::executeCalclatorCode(const char* code) {
 	EnterCriticalSection(&ccodeMutex);
 //	LOG_DEBUG("# ccM lock acquired");
 
-	if (!SUCCEEDED(result = SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode))) {
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code [%d]: '%s'", result, ccode.calcCode);
+					// Check string for a SLEEP instruction
+	char* p = 0; int c = 0, delay = 0;
+	while ((p = strstr(ccode.calcCode + c, "SLEEP::")) != NULL)
+	{
+		sscanf(p, "SLEEP::%d", &delay);
+		*p = 0;
+		if (!SUCCEEDED(result = SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), ccode.calcCode + c))) {
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code [%d]: '%s'", result, ccode.calcCode + c);
+			LOG_ERROR(szLogBuffer);
+		}
+		else {
+			SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
+			sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calcultor Code Client Data Area updated [requestID=%d]: '%s'", dwLastID, ccode.calcCode + c);
+			LOG_DEBUG(szLogBuffer);
+		}
+		sprintf(szLogBuffer, "Sleeping for delay: %d", delay);
+		LOG_DEBUG(szLogBuffer);
+		Sleep(delay);
+
+		p = strstr(p + 1, " ");
+		*p = 0;
+		c += p - &((ccode.calcCode + c)[0]) + 1;
+	}
+	if (!SUCCEEDED(result = SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), ccode.calcCode + c))) {
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Error setting Client Data Calculator Code [%d]: '%s'", result, ccode.calcCode + c);
 		LOG_ERROR(szLogBuffer);
 	}
 	else {
 		SimConnect_GetLastSentPacketID(hSimConnect, &dwLastID);
-		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calcultor Code Client Data Area updated [requestID=%d]", dwLastID);
-		LOG_TRACE(szLogBuffer);
+		sprintf_s(szLogBuffer, sizeof(szLogBuffer), "Calcultor Code Client Data Area updated [requestID=%d]: '%s'", dwLastID, ccode.calcCode + c);
+		LOG_DEBUG(szLogBuffer);
 		// Now send an empty request. This is needed to clear the CDA in case the same calc code is resent
 		strcpy_s(ccode.calcCode, 2, "1");
 		SimConnect_SetClientData(hSimConnect, 3, 3, 0, 0, sizeof(CDACALCCODE), &ccode);
